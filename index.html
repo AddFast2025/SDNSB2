@@ -64,7 +64,7 @@
   </head>
   <body>
     <main id="page1" class="card">
-      <h1>Selamat Datang ya</h1>
+      <h1>Selamat Datang ya kak</h1>
       <p>Halaman ini sudah disesuaikan untuk layar HP.</p>
       <button class="btn" onclick="goToPage2()">Mulai</button>
     </main>
@@ -79,9 +79,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
     <script>
-
- const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwYZkI9cHV-uhDmK2ArIbdlyvSfxISCh9dN0dijb7evW3XihLqE6PfSvi8PHeKMwMwE/exec";
-
+      // Ganti dengan Web App URL terbaru setelah deploy
+      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwYZkI9cHV-uhDmK2ArIbdlyvSfxISCh9dN0dijb7evW3XihLqE6PfSvi8PHeKMwMwE/exec";
 
       function goToPage2(){
         document.getElementById('page1').classList.add('hidden');
@@ -108,9 +107,7 @@
           osc.frequency.value = 200; // ding dong low tone
           gainNode.gain.value = 0.2;
           osc.start();
-          setTimeout(()=>{
-            osc.frequency.value = 400;
-          },150);
+          setTimeout(()=>{ osc.frequency.value = 400; },150);
           osc.stop(ctx.currentTime + 0.6);
         }
       }
@@ -149,16 +146,25 @@
 
             if(code.data.charAt(0) === "|"){
               beep(true);
-              output.textContent = "? Berhasil: " + code.data;
- 		 // kirim ke Google Sheets
+              output.textContent = "✅ Berhasil: " + code.data;
+
+              // Kirim ke Google Sheets via JSON
               fetch(WEB_APP_URL, {
                 method: "POST",
-                body: JSON.stringify({ qr: decodedText })
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ qr: code.data })
+              })
+              .then(res => res.text())
+              .then(txt => {
+                console.log("Response dari Apps Script:", txt);
+              })
+              .catch(err => {
+                console.error("Gagal kirim:", err);
               });
 
             } else {
               beep(false);
-              output.textContent = "? Silakan scan kartu QR siswa";
+              output.textContent = "❌ Silakan scan kartu QR siswa";
             }
             return;
           }
