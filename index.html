@@ -16,7 +16,7 @@
     }
     #reader {
       width: 100%;
-      max-width: 600px;
+      max-width: 500px;
       margin: 20px auto;
     }
 h1 {
@@ -81,7 +81,13 @@ h1 {
 
       html5QrCode.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: 300 },
+       { 
+    fps: 10, 
+    qrbox: function(viewfinderWidth, viewfinderHeight) {
+      let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+      return Math.floor(minEdge * 0.8); // 80% dari layar
+    }
+  },
         (decodedText) => {
           html5QrCode.stop().then(() => {
             html5QrCode.clear();
@@ -120,6 +126,7 @@ h1 {
   </script>
 </body>
 </html>
+
 
 
 
