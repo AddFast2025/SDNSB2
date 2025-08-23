@@ -6,22 +6,22 @@
     <title>Selamat Datang</title>
     <style>
       :root {
-        --bg1: #f8fafc;   /* slate-50 */
-        --bg2: #e2e8f0;   /* slate-200 */
-        --text: #0f172a;  /* slate-900 */
+        --bg1: #f8fafc;
+        --bg2: #e2e8f0;
+        --text: #0f172a;
       }
       html, body {
         height: 100%;
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: var(--text);
       }
       body {
-        margin: 0;
-        min-height: 100svh; /* safe for mobile UI bars */
+        min-height: 100svh;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
         background: radial-gradient(1200px 600px at 50% 10%, var(--bg2), var(--bg1));
-        color: var(--text);
       }
       .card {
         text-align: center;
@@ -36,7 +36,6 @@
         margin: 0 0 8px;
         font-size: clamp(28px, 7vw, 48px);
         line-height: 1.1;
-        letter-spacing: -0.02em;
       }
       p {
         margin: 0;
@@ -49,7 +48,7 @@
         padding: 12px 18px;
         border-radius: 999px;
         border: none;
-        background: #0ea5e9; /* sky-500 */
+        background: #0ea5e9;
         color: white;
         font-weight: 600;
         font-size: clamp(14px, 3.8vw, 16px);
@@ -58,13 +57,31 @@
         box-shadow: 0 6px 16px rgba(14, 165, 233, 0.35);
       }
       .btn:active { transform: translateY(1px); }
+      .hidden { display: none; }
     </style>
   </head>
   <body>
-    <main class="card" role="main" aria-label="Halaman selamat datang">
+    <main id="page1" class="card">
       <h1>Selamat Datang</h1>
       <p>Halaman ini sudah disesuaikan untuk layar HP.</p>
-      <a class="btn" href="#" aria-label="Mulai">Mulai</a>
+      <button class="btn" onclick="goToPage2()">Mulai</button>
     </main>
+
+    <main id="page2" class="card hidden">
+      <h1>Silakan Scan Barcode</h1>
+      <p>Gunakan kamera HP Anda untuk memindai barcode.</p>
+      <button class="btn" onclick="goToPage1()">Kembali</button>
+    </main>
+
+    <script>
+      function goToPage2(){
+        document.getElementById('page1').classList.add('hidden');
+        document.getElementById('page2').classList.remove('hidden');
+      }
+      function goToPage1(){
+        document.getElementById('page2').classList.add('hidden');
+        document.getElementById('page1').classList.remove('hidden');
+      }
+    </script>
   </body>
 </html>
