@@ -58,6 +58,8 @@
       }
       .btn:active { transform: translateY(1px); }
       .hidden { display: none; }
+      video { width: 100%; max-height: 240px; margin-top: 12px; border-radius: 12px; }
+      #output { margin-top: 12px; font-weight: 600; color: #0f172a; }
     </style>
   </head>
   <body>
@@ -69,18 +71,51 @@
 
     <main id="page2" class="card hidden">
       <h1>Silakan Scan Barcode</h1>
-      <p>Gunakan kamera HP Anda untuk memindai barcode.</p>
-      <button class="btn" onclick="goToPage1()">Kembali</button>
+      <p>Arahkan kamera ke barcode untuk memindai.</p>
+      <button class="btn" onclick="startScan()">Scan</button>
+      <video id="preview" autoplay></video>
+      <div id="output"></div>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
     <script>
       function goToPage2(){
         document.getElementById('page1').classList.add('hidden');
         document.getElementById('page2').classList.remove('hidden');
       }
-      function goToPage1(){
-        document.getElementById('page2').classList.add('hidden');
-        document.getElementById('page1').classList.remove('hidden');
+
+      let video = document.getElementById('preview');
+      let output = document.getElementById('output');
+      let scanning = false;
+
+      function startScan(){
+        output.textContent = "";
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+          .then(stream => {
+            video.srcObject = stream;
+            video.setAttribute("playsinline", true);
+            video.play();
+            scanning = true;
+            scanLoop();
+          });
+      }
+
+      function scanLoop(){
+        if(!scanning) return;
+        let canvas = document.createElement("canvas");
+        let context = canvas.getContext("2d");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        let code = jsQR(imageData.data, canvas.width, canvas.height);
+        if(code){
+          output.textContent = "Hasil: " + code.data;
+          scanning = false;
+          video.srcObject.getTracks().forEach(track => track.stop());
+        } else {
+          requestAnimationFrame(scanLoop);
+        }
       }
     </script>
   </body>
