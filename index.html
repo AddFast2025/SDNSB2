@@ -1,160 +1,108 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Selamat Datang</title>
-    <style>
-      :root {
-        --bg1: #f8fafc;
-        --bg2: #e2e8f0;
-        --text: #0f172a;
-      }
-      html, body {
-        height: 100%;
-        margin: 0;
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-        color: var(--text);
-      }
-      body {
-        min-height: 100svh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: radial-gradient(1200px 600px at 50% 10%, var(--bg2), var(--bg1));
-      }
-      .card {
-        text-align: center;
-        padding: clamp(16px, 4vw, 32px);
-        border-radius: 24px;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-        background: white;
-        max-width: min(92vw, 520px);
-        width: 100%;
-      }
-      h1 {
-        margin: 0 0 8px;
-        font-size: clamp(28px, 7vw, 48px);
-        line-height: 1.1;
-      }
-      p {
-        margin: 0;
-        font-size: clamp(14px, 3.6vw, 18px);
-        opacity: 0.75;
-      }
-      .btn {
-        display: inline-block;
-        margin-top: 18px;
-        padding: 12px 18px;
-        border-radius: 999px;
-        border: none;
-        background: #0ea5e9;
-        color: white;
-        font-weight: 600;
-        font-size: clamp(14px, 3.8vw, 16px);
-        text-decoration: none;
-        cursor: pointer;
-        box-shadow: 0 6px 16px rgba(14, 165, 233, 0.35);
-      }
-      .btn:active { transform: translateY(1px); }
-      .hidden { display: none; }
-      video { width: 100%; max-height: 240px; margin-top: 12px; border-radius: 12px; }
-      #output { margin-top: 12px; font-weight: 600; color: #0f172a; }
-    </style>
-  </head>
-  <body>
-    <main id="page1" class="card">
-      <h1>Selamat Datang</h1>
-      <p>Halaman ini sudah disesuaikan untuk layar HP.</p>
-      <button class="btn" onclick="goToPage2()">Mulai</button>
-    </main>
+<head>
+  <meta charset="UTF-8">
+  <title>Scan Barcode</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    #reader {
+      width: 100%;
+      max-width: 400px;
+      margin: 20px auto;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #output {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Silakan Scan Barcode</h1>
+  <div id="reader"></div>
+  <button id="scanBtn">Scan</button>
+  <p id="output"></p>
 
-    <main id="page2" class="card hidden">
-      <h1>Silakan Scan Barcode</h1>
-      <p>Arahkan kamera ke barcode untuk memindai.</p>
-      <button class="btn" onclick="startScan()">Scan</button>
-      <video id="preview" autoplay></video>
-      <div id="output">Belum ada hasil. Klik Scan untuk mulai.</div>
-    </main>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwYZkI9cHV-uhDmK2ArIbdlyvSfxISCh9dN0dijb7evW3XihLqE6PfSvi8PHeKMwMwE/exec";
+    
+    const scanBtn = document.getElementById("scanBtn");
+    const output = document.getElementById("output");
+    const readerDiv = document.getElementById("reader");
+    let html5QrCode;
 
-    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
-    <script>
-      function goToPage2(){
-        document.getElementById('page1').classList.add('hidden');
-        document.getElementById('page2').classList.remove('hidden');
+    // fungsi suara
+    function beep(success = true) {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if (success) {
+        osc.frequency.value = 800; // beep
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+      } else {
+        osc.frequency.value = 400; // ding-dong
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
       }
+    }
 
-      let video = document.getElementById('preview');
-      let output = document.getElementById('output');
-      let scanning = false;
-      let stream;
-
-      function beep(success=true){
-        let ctx = new (window.AudioContext || window.webkitAudioContext)();
-        let osc = ctx.createOscillator();
-        let gainNode = ctx.createGain();
-        osc.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        if(success){
-          osc.frequency.value = 800; // beep
-          gainNode.gain.value = 0.2;
-          osc.start();
-          osc.stop(ctx.currentTime + 0.2);
-        } else {
-          osc.frequency.value = 200; // ding dong low tone
-          gainNode.gain.value = 0.2;
-          osc.start();
-          setTimeout(()=>{
-            osc.frequency.value = 400;
-          },150);
-          osc.stop(ctx.currentTime + 0.6);
-        }
+    scanBtn.addEventListener("click", () => {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          html5QrCode.clear();
+          startScan();
+        });
+      } else {
+        startScan();
       }
+    });
 
-      function startScan(){
-        output.textContent = "Mencari barcode...";
-        navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "environment", width: {ideal:1280}, height:{ideal:720} } 
-        })
-          .then(s => {
-            stream = s;
-            video.srcObject = stream;
-            video.setAttribute("playsinline", true);
-            video.play();
-            scanning = true;
-            requestAnimationFrame(scanLoop);
-          })
-          .catch(err => {
-            output.textContent = "Gagal membuka kamera: " + err;
-          });
-      }
+    function startScan() {
+      html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          html5QrCode.stop().then(() => {
+            html5QrCode.clear();
 
-      function scanLoop(){
-        if(!scanning) return;
-        if(video.readyState === video.HAVE_ENOUGH_DATA){
-          let canvas = document.createElement("canvas");
-          let context = canvas.getContext("2d");
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-          let code = jsQR(imageData.data, canvas.width, canvas.height);
-          if(code){
-            scanning = false;
-            if(stream) stream.getTracks().forEach(track => track.stop());
-
-            if(code.data.charAt(0) === "|"){
+            if (decodedText.charAt(0) === "|") {
               beep(true);
-              output.textContent = "? Berhasil: " + code.data;
+              output.textContent = "? Berhasil: " + decodedText;
+
+              // kirim ke Google Sheets
+              fetch(WEB_APP_URL, {
+                method: "POST",
+                body: JSON.stringify({ qr: decodedText })
+              });
             } else {
               beep(false);
               output.textContent = "? Silakan scan kartu QR siswa";
             }
-            return;
-          }
-        }
-        requestAnimationFrame(scanLoop);
-      }
-    </script>
-  </body>
+          });
+        },
+        (error) => { /* abaikan error scanning */ }
+      );
+    }
+  </script>
+</body>
 </html>
