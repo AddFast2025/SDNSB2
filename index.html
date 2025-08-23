@@ -89,6 +89,28 @@
       let scanning = false;
       let stream;
 
+      function beep(success=true){
+        let ctx = new (window.AudioContext || window.webkitAudioContext)();
+        let osc = ctx.createOscillator();
+        let gainNode = ctx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        if(success){
+          osc.frequency.value = 800; // beep
+          gainNode.gain.value = 0.2;
+          osc.start();
+          osc.stop(ctx.currentTime + 0.2);
+        } else {
+          osc.frequency.value = 200; // ding dong low tone
+          gainNode.gain.value = 0.2;
+          osc.start();
+          setTimeout(()=>{
+            osc.frequency.value = 400;
+          },150);
+          osc.stop(ctx.currentTime + 0.6);
+        }
+      }
+
       function startScan(){
         output.textContent = "Mencari barcode...";
         navigator.mediaDevices.getUserMedia({ 
@@ -118,9 +140,16 @@
           let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
           let code = jsQR(imageData.data, canvas.width, canvas.height);
           if(code){
-            output.textContent = "Hasil: " + code.data;
             scanning = false;
             if(stream) stream.getTracks().forEach(track => track.stop());
+
+            if(code.data.charAt(0) === "|"){
+              beep(true);
+              output.textContent = "? Berhasil: " + code.data;
+            } else {
+              beep(false);
+              output.textContent = "? Silakan scan kartu QR siswa";
+            }
             return;
           }
         }
