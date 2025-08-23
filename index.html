@@ -2,111 +2,106 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Scan QR Siswa</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan Barcode</title>
   <style>
     body {
-      margin: 0; padding: 0;
       font-family: Arial, sans-serif;
       text-align: center;
-      background: #f0f8ff;
-    }
-    .page { display: none; padding: 20px; }
-    .active { display: block; }
-    button {
-      padding: 12px 20px;
-      font-size: 18px;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      background: #007bff;
-      color: white;
-      margin-top: 20px;
+      margin: 0;
+      padding: 20px;
     }
     #reader {
       width: 100%;
       max-width: 400px;
-      margin: auto;
+      margin: 20px auto;
     }
-    #result {
-      margin-top: 15px;
-      font-size: 18px;
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #output {
+      margin-top: 20px;
       font-weight: bold;
     }
   </style>
 </head>
 <body>
+  <h1>Silakan Scan Barcode</h1>
+  <div id="reader"></div>
+  <button id="scanBtn">Scan</button>
+  <p id="output"></p>
 
-  <!-- Halaman 1 -->
-  <div id="page1" class="page active">
-    <h1>Selamat Datang</h1>
-    <button onclick="goToPage(2)">Mulai</button>
-  </div>
-
-  <!-- Halaman 2 -->
-  <div id="page2" class="page">
-    <h2>Silakan Scan Barcode ya kakakku</h2>
-    <div id="reader"></div>
-    <button onclick="startScan()">📷 Scan</button>
-    <div id="result"></div>
-  </div>
-
-  <!-- Suara -->
-  <audio id="beep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
-  <audio id="ding" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
-
-  <!-- Script html5-qrcode -->
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw5axaPMrVkcqn92VMDRSuJl1LwRBCibU3DkMtu40jrYqGfRiNAomQhfcl0g3qPUl2OKg/exec";
-
-
-
+    
+    const scanBtn = document.getElementById("scanBtn");
+    const output = document.getElementById("output");
+    const readerDiv = document.getElementById("reader");
     let html5QrCode;
 
-    function goToPage(page) {
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.getElementById('page' + page).classList.add('active');
+    // fungsi suara
+    function beep(success = true) {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if (success) {
+        osc.frequency.value = 800; // beep
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+      } else {
+        osc.frequency.value = 400; // ding-dong
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+      }
     }
 
-    function startScan() {
-      const readerDiv = document.getElementById("reader");
-      readerDiv.innerHTML = ""; // reset scanner
-      html5QrCode = new Html5Qrcode("reader");
+    scanBtn.addEventListener("click", () => {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          html5QrCode.clear();
+          startScan();
+        });
+      } else {
+        startScan();
+      }
+    });
 
+    function startScan() {
+      html5QrCode = new Html5Qrcode("reader");
       html5QrCode.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: 250 },
-        (decodedText, decodedResult) => {
-          html5QrCode.stop();
-          handleScan(decodedText);
-        },
-        (err) => { console.warn("Scan error:", err); }
-      );
-    }
+        (decodedText) => {
+          html5QrCode.stop().then(() => {
+            html5QrCode.clear();
 
-    function handleScan(qrText) {
-      // kirim ke Google Sheets
-      fetch(WEB_APP_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qr: qrText })
-      })
-      .then(res => res.json())
-      .then(data => {
-        const resultDiv = document.getElementById("result");
-        if (data.status === "OK") {
-          document.getElementById("beep").play();
-          resultDiv.innerHTML = "✅ Berhasil: " + data.qr;
-        } else {
-          document.getElementById("ding").play();
-          resultDiv.innerHTML = "❌ Gagal, bukan QR siswa: " + data.qr;
-        }
-      })
-      .catch(err => {
-        console.error("Gagal kirim:", err);
-        alert("❌ Error koneksi ke server");
-      });
+            if (decodedText.charAt(0) === "|") {
+              beep(true);
+              output.textContent = "✅ Berhasil: " + decodedText;
+
+              // kirim ke Google Sheets
+              fetch(WEB_APP_URL, {
+                method: "POST",
+                body: JSON.stringify({ qr: decodedText })
+              });
+            } else {
+              beep(false);
+              output.textContent = "❌ Silakan scan kartu QR siswa";
+            }
+          });
+        },
+        (error) => { /* abaikan error scanning */ }
+      );
     }
   </script>
 </body>
