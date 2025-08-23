@@ -157,31 +157,28 @@
           html5QrCode.stop().then(() => {
             html5QrCode.clear();
 
-            if (decodedText.charAt(0) === "|") {
-              beep(true);
-              output.textContent = "✅ Berhasil: " + decodedText;
-
-              // kirim ke Google Sheets
-              fetch(WEB_APP_URL, {
-                method: "POST",
-                body: JSON.stringify({ qr: decodedText })
-              }).then(() => {
-                loadHistory(); // refresh tabel setelah kirim
-              });
-
-            } else {
-              beep(false);
-              output.textContent = "❌ Silakan scan kartu QR siswa";
-            }
-
-            // otomatis scan ulang setelah 1.5 detik
-            setTimeout(startScan, 1500);
-
-          });
-        },
-        (error) => { /* abaikan error scanning */ }
-      );
+           if (decodedText.charAt(0) === "|") {
+  // kirim ke Google Sheets dan tampilkan sukses hanya jika berhasil
+  fetch(WEB_APP_URL, {
+    method: "POST",
+    body: JSON.stringify({ qr: decodedText })
+  })
+  .then(res => {
+    if (res.ok) {
+      beep(true);
+      output.textContent = "✅ Berhasil terkirim: " + decodedText;
+      loadHistory(); // refresh tabel
+    } else {
+      throw new Error("Server tidak merespons OK");
     }
+  })
+  .catch(err => {
+    beep(false);
+    output.textContent = "❌ Gagal terkirim, periksa koneksi!";
+    console.error(err);
+  });
+}
+
 
     // tombol manual scan ulang
     scanBtn.addEventListener("click", () => {
@@ -214,6 +211,7 @@
   </script>
 </body>
 </html>
+
 
 
 
