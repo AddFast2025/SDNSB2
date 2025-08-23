@@ -2,6 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scan Barcode</title>
   <style>
     body {
@@ -12,8 +13,8 @@
     }
     #reader {
       width: 100%;
-      max-width: 400px;
-      margin: 20px auto;
+      max-width: 100%;
+      margin: 10px auto;
     }
     button {
       background: #007bff;
@@ -24,11 +25,17 @@
       font-size: 16px;
       cursor: pointer;
       margin-top: 10px;
+      width: 100%;
+      max-width: 300px;
     }
     #output {
       margin-top: 20px;
       font-weight: bold;
       min-height: 24px;
+    }
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      button { font-size: 14px; padding: 8px 12px; }
     }
   </style>
 </head>
@@ -110,3 +117,4 @@
   </script>
 </body>
 </html>
+
