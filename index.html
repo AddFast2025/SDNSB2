@@ -83,10 +83,7 @@ h1 {
         { facingMode: "environment" },
        { 
     fps: 10, 
-  qrbox: (w, h) => {
-    let minEdge = Math.min(w, h);
-    return { width: minEdge * 0.7, height: minEdge * 0.7 };
-    }
+ qrbox: { width: 300, height: 300 }
   },
         (decodedText) => {
           html5QrCode.stop().then(() => {
@@ -126,6 +123,7 @@ h1 {
   </script>
 </body>
 </html>
+
 
 
 
