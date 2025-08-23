@@ -1,4 +1,44 @@
-<script>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Scan Barcode</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    #reader {
+      width: 100%;
+      max-width: 400px;
+      margin: 20px auto;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #output {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Silakan Scan Barcode</h1>
+  <div id="reader"></div>
+  <button id="scanBtn">Scan</button>
+  <p id="output"></p>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+ <script>
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw5axaPMrVkcqn92VMDRSuJl1LwRBCibU3DkMtu40jrYqGfRiNAomQhfcl0g3qPUl2OKg/exec";
   
   const scanBtn = document.getElementById("scanBtn");
@@ -58,3 +98,6 @@
     );
   }
 </script>
+
+</body>
+</html>
