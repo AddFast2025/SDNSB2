@@ -18,13 +18,18 @@
       max-width: 800px;
       margin: 20px auto;
     }
+h1 {
+  font-size: 34px;   /* tambah ini biar teks judul lebih besar */
+  font-weight: bold;
+  margin-bottom: 20px;
+}
     button {
       background: #007bff;
       color: white;
       border: none;
-      padding: 10px 20px;
+      padding: 20px 38px;
       border-radius: 8px;
-      font-size: 26px;
+      font-size: 30px;
       cursor: pointer;
       margin-top: 10px;
     }
@@ -74,7 +79,7 @@
 
       html5QrCode.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
+        { fps: 10, qrbox: 350 },
         (decodedText) => {
           html5QrCode.stop().then(() => {
             html5QrCode.clear();
@@ -113,6 +118,7 @@
   </script>
 </body>
 </html>
+
 
 
 
