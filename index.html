@@ -83,9 +83,9 @@ h1 {
         { facingMode: "environment" },
        { 
     fps: 10, 
-    qrbox: function(viewfinderWidth, viewfinderHeight) {
-      let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-      return Math.floor(minEdge * 0.8); // 80% dari layar
+  qrbox: (w, h) => {
+    let minEdge = Math.min(w, h);
+    return { width: minEdge * 0.7, height: minEdge * 0.7 };
     }
   },
         (decodedText) => {
@@ -126,6 +126,7 @@ h1 {
   </script>
 </body>
 </html>
+
 
 
 
