@@ -74,7 +74,7 @@
       <p>Arahkan kamera ke barcode untuk memindai.</p>
       <button class="btn" onclick="startScan()">Scan</button>
       <video id="preview" autoplay></video>
-      <div id="output"></div>
+      <div id="output">Belum ada hasil. Klik Scan untuk mulai.</div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
@@ -87,35 +87,44 @@
       let video = document.getElementById('preview');
       let output = document.getElementById('output');
       let scanning = false;
+      let stream;
 
       function startScan(){
-        output.textContent = "";
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-          .then(stream => {
+        output.textContent = "Mencari barcode...";
+        navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "environment", width: {ideal:1280}, height:{ideal:720} } 
+        })
+          .then(s => {
+            stream = s;
             video.srcObject = stream;
             video.setAttribute("playsinline", true);
             video.play();
             scanning = true;
-            scanLoop();
+            requestAnimationFrame(scanLoop);
+          })
+          .catch(err => {
+            output.textContent = "Gagal membuka kamera: " + err;
           });
       }
 
       function scanLoop(){
         if(!scanning) return;
-        let canvas = document.createElement("canvas");
-        let context = canvas.getContext("2d");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        let code = jsQR(imageData.data, canvas.width, canvas.height);
-        if(code){
-          output.textContent = "Hasil: " + code.data;
-          scanning = false;
-          video.srcObject.getTracks().forEach(track => track.stop());
-        } else {
-          requestAnimationFrame(scanLoop);
+        if(video.readyState === video.HAVE_ENOUGH_DATA){
+          let canvas = document.createElement("canvas");
+          let context = canvas.getContext("2d");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          let code = jsQR(imageData.data, canvas.width, canvas.height);
+          if(code){
+            output.textContent = "Hasil: " + code.data;
+            scanning = false;
+            if(stream) stream.getTracks().forEach(track => track.stop());
+            return;
+          }
         }
+        requestAnimationFrame(scanLoop);
       }
     </script>
   </body>
