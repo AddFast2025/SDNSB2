@@ -156,6 +156,7 @@
 
     // tombol untuk memulai scan
     scanBtn.addEventListener("click", () => {
+      output.textContent = ""; // 🔄 hapus notifikasi lama
       startScan();
     });
 
