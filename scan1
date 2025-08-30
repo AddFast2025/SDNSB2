@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Scan Barcode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 40px;
+      font-size: 18px;
+    }
+    #reader {
+      width: 100%;
+      max-width: 500px;
+      margin: 20px auto;
+      display: none; /* kamera disembunyikan dulu */
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-size: 22px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    #output {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 16px;
+      min-height: 24px;
+    }
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      font-size: 16px;
+      width: 100%;
+      max-width: 600px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+    }
+    th { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>Silakan Scan Barcode</h1>
+  <div id="reader"></div>
+  <button id="scanBtn">▶️ Start Scan</button>
+  <p id="output"></p>
+
+  <!-- Tabel Data History -->
+  <table id="historyTable">
+    <thead>
+      <tr><th>No</th><th>Nama</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw5axaPMrVkcqn92VMDRSuJl1LwRBCibU3DkMtu40jrYqGfRiNAomQhfcl0g3qPUl2OKg/exec";
+    const scanBtn = document.getElementById("scanBtn");
+    const output = document.getElementById("output");
+    let html5QrCode; // simpan instance scanner
+
+    // fungsi beep
+    function beep(success = true) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if (success) {
+        osc.frequency.value = 800;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+      } else {
+        osc.frequency.value = 400;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+      }
+    }
+
+    // fungsi load history
+    function loadHistory() {
+      fetch(WEB_APP_URL + "?action=history")
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.querySelector("#historyTable tbody");
+          tbody.innerHTML = "";
+          data.forEach(row => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${row[0]}</td><td>${row[1]}</td>`;
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(err => console.error("Gagal load history:", err));
+    }
+
+    // fungsi mulai scan
+    function startScan() {
+      const readerDiv = document.getElementById("reader");
+      readerDiv.style.display = "block"; // tampilkan kamera
+      html5QrCode = new Html5Qrcode("reader");
+
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 300, height: 300 } },
+        (decodedText) => {
+          // jika QR terbaca -> stop kamera
+          html5QrCode.stop().then(() => {
+            readerDiv.style.display = "none"; // sembunyikan kamera
+            html5QrCode.clear();
+            handleResult(decodedText);
+          });
+        },
+        () => { /* abaikan error scanning */ }
+      ).catch(err => {
+        console.error("Gagal start scanner:", err);
+      });
+    }
+
+    // fungsi kirim hasil scan
+    function handleResult(decodedText) {
+      if (decodedText.charAt(0) === "|") {
+        fetch(WEB_APP_URL, {
+          method: "POST",
+          body: JSON.stringify({ qr: decodedText })
+        })
+        .then(res => {
+          if (res.ok) {
+            beep(true);
+            output.textContent = "✅ Berhasil terkirim: " + decodedText;
+            loadHistory();
+          } else {
+            throw new Error("Server tidak merespons OK");
+          }
+        })
+        .catch(err => {
+          beep(false);
+          output.textContent = "❌ Gagal terkirim, periksa koneksi!";
+        });
+      } else {
+        beep(false);
+        output.textContent = "❌ QR tidak valid!";
+      }
+    }
+
+    // tombol untuk memulai scan
+    scanBtn.addEventListener("click", () => {
+      startScan();
+    });
+
+    // load history pertama kali
+    loadHistory();
+    setInterval(loadHistory, 5000);
+  </script>
+</body>
+</html>
