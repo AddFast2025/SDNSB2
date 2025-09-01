@@ -2,147 +2,101 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tampil Data Sheet4 (B:D)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Data Siswa Belum Scan Hari Ini</title>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
-    h1 { font-size: 18px; margin: 0 0 12px; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
-    .controls { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
-    button { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; background: #f7f7f7; cursor: pointer; }
-    button:disabled { opacity: .6; cursor: not-allowed; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
-    th { background: #fafafa; position: sticky; top: 0; }
-    .status { font-size: 14px; color: #666; }
-    .error { color: #b00020; }
-    .hidden { display: none; }
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    body { margin: 24px; }
+    h1 { margin-bottom: 16px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 16px; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #f5f5f5; text-align: left; }
+
+    /* Kolom A dan B diperkecil dan rata tengah */
+    th:nth-child(1), td:nth-child(1),
+    th:nth-child(2), td:nth-child(2) {
+      width: 80px;       /* sesuaikan sesuai kebutuhan */
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-  <h1>Data Sheet4 (Kolom B–D)</h1>
-  <div class="card">
-    <div class="controls">
-      <span class="status" id="status">Menunggu pemuatan…</span>
-      <button id="reloadBtn">Muat Ulang</button>
-    </div>
-    <div id="tableWrap"></div>
-    <div id="error" class="error hidden"></div>
-  </div>
+  <h1>Data Siswa Belum Scan Hari Ini</h1>
+
+  <table id="dataTable" hidden>
+    <thead></thead>
+    <tbody></tbody>
+  </table>
 
   <script>
-    // ======= KONFIGURASI =======
-    // Ganti dengan URL Web App Apps Script kamu (menu Deploy → Web app)
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw5axaPMrVkcqn92VMDRSuJl1LwRBCibU3DkMtu40jrYqGfRiNAomQhfcl0g3qPUl2OKg/exec";
-    // Kita minta sheet=Sheet4 dan range=B:D (kolom B, C, D)
-   const PARAMS = new URLSearchParams({
-  action: "range",
-  sheet: "belum_scan",
-  range: "I:J"
-});
-const API_URL = `${SCRIPT_URL}?${PARAMS.toString()}`;
+    const API_URL = "https://script.google.com/macros/s/AKfycbzJ9QqT8AjJWhcBl4WDEuS6VTz-2lTw9nt8H-acvf9mNf_sZrXV9-l3VDqN0NVuqjMK8g/exec";
+    const FIXED_PARAMS = { sheet: 'belumscan', range: 'A1:C100' };
 
-    const statusEl = document.getElementById('status');
-    const errorEl = document.getElementById('error');
-    const tableWrap = document.getElementById('tableWrap');
-    const reloadBtn = document.getElementById('reloadBtn');
+    const table = document.getElementById('dataTable');
+    const thead = table.querySelector('thead');
+    const tbody = table.querySelector('tbody');
 
-    async function fetchData() {
-      setStatus("Memuat data…");
-      hideError();
-      disableReload(true);
+    function buildUrl(base, paramsObj) {
+      const url = new URL(base);
+      const params = new URLSearchParams(paramsObj);
+      url.search = params.toString();
+      return url.toString();
+    }
 
+    async function loadData() {
+      const url = buildUrl(API_URL, FIXED_PARAMS);
       try {
-        const res = await fetch(API_URL, { method: "GET", headers: { "Accept": "application/json" } });
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' — ' + res.statusText);
+        const json = await res.json();
 
-        const data = await res.json();
+        if (json.error) throw new Error(json.error);
 
-        // Data bisa berupa:
-        // 1) Array of Objects (jika pakai API versi header → lebih rapi)
-        // 2) Array of Arrays (jika pakai API versi mentah)
-        // Kita dukung keduanya.
+        // Filter baris yang memiliki teks di setidaknya satu kolom
+        const rows = Array.isArray(json.data) ? json.data.filter(row => {
+          return Object.values(row).some(val => val !== null && val !== undefined && String(val).trim() !== '');
+        }) : [];
 
-        if (Array.isArray(data) && data.length > 0) {
-          if (isArrayOfObjects(data)) {
-            renderTableFromObjects(data);
-          } else {
-            renderTableFromArrays(data);
-          }
-          setStatus(`Sukses. ${countRows(data)} baris ditampilkan.`);
-        } else {
-          tableWrap.innerHTML = "";
-          setStatus("Tidak ada data (0 baris).");
-        }
-
+        renderTable(rows);
       } catch (err) {
-        tableWrap.innerHTML = "";
-        showError("Gagal memuat: " + err.message);
-        setStatus("Gagal memuat.");
-      } finally {
-        disableReload(false);
+        console.error('Gagal memuat:', err.message);
+        table.hidden = true;
       }
     }
 
-    function isArrayOfObjects(arr) {
-      return typeof arr[0] === "object" && !Array.isArray(arr[0]);
-    }
+    function renderTable(rows) {
+      thead.innerHTML = '';
+      tbody.innerHTML = '';
 
-    function countRows(data) {
-      // Jika array-of-arrays dan baris pertama header, hitung tanpa header
-      if (Array.isArray(data[0])) {
-        const firstRow = data[0] || [];
-        const hasHeader = firstRow.some(v => String(v || "").trim() !== "");
-        return Math.max(0, data.length - (hasHeader ? 1 : 0));
+      if (!rows.length) {
+        table.hidden = false;
+        return;
       }
-      return data.length;
-    }
 
-    function renderTableFromObjects(rows) {
-      // Ambil semua key dari header objek
       const headers = Object.keys(rows[0]);
+      const trh = document.createElement('tr');
+      headers.forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        trh.appendChild(th);
+      });
+      thead.appendChild(trh);
 
-      const thead = `<thead><tr>${headers.map(h => `<th>${escapeHTML(h)}</th>`).join("")}</tr></thead>`;
-      const tbody = `<tbody>${
-        rows.map(row => {
-          return `<tr>${headers.map(h => `<td>${escapeHTML(row[h])}</td>`).join("")}</tr>`;
-        }).join("")
-      }</tbody>`;
+      rows.forEach(obj => {
+        const tr = document.createElement('tr');
+        headers.forEach(h => {
+          const td = document.createElement('td');
+          const val = obj[h];
+          td.textContent = (val === null || val === undefined) ? '' : String(val);
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
 
-      tableWrap.innerHTML = `<div style="overflow:auto"><table>${thead}${tbody}</table></div>`;
+      table.hidden = false;
     }
 
-    function renderTableFromArrays(arr) {
-      // Anggap baris pertama = header
-      const headers = arr[0] || [];
-      const rows = arr.slice(1);
-
-      const thead = `<thead><tr>${headers.map(h => `<th>${escapeHTML(h)}</th>`).join("")}</tr></thead>`;
-      const tbody = `<tbody>${
-        rows.map(r => `<tr>${r.map(c => `<td>${escapeHTML(c)}</td>`).join("")}</tr>`).join("")
-      }</tbody>`;
-
-      tableWrap.innerHTML = `<div style="overflow:auto"><table>${thead}${tbody}</table></div>`;
-    }
-
-    function escapeHTML(val) {
-      return String(val ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-
-    function setStatus(msg) { statusEl.textContent = msg; }
-    function showError(msg) { errorEl.textContent = msg; errorEl.classList.remove("hidden"); }
-    function hideError() { errorEl.textContent = ""; errorEl.classList.add("hidden"); }
-    function disableReload(disabled) { reloadBtn.disabled = disabled; }
-
-    reloadBtn.addEventListener('click', fetchData);
-
-    // Auto-load saat halaman dibuka
-    fetchData();
+    loadData();
   </script>
 </body>
 </html>
