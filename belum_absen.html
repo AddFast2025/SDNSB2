@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tampil Data Sheet4 (B:D)</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+    .controls { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+    button { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; background: #f7f7f7; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
+    th { background: #fafafa; position: sticky; top: 0; }
+    .status { font-size: 14px; color: #666; }
+    .error { color: #b00020; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Data Sheet4 (Kolom B–D)</h1>
+  <div class="card">
+    <div class="controls">
+      <span class="status" id="status">Menunggu pemuatan…</span>
+      <button id="reloadBtn">Muat Ulang</button>
+    </div>
+    <div id="tableWrap"></div>
+    <div id="error" class="error hidden"></div>
+  </div>
+
+  <script>
+    // ======= KONFIGURASI =======
+    // Ganti dengan URL Web App Apps Script kamu (menu Deploy → Web app)
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw5axaPMrVkcqn92VMDRSuJl1LwRBCibU3DkMtu40jrYqGfRiNAomQhfcl0g3qPUl2OKg/exec";
+    // Kita minta sheet=Sheet4 dan range=B:D (kolom B, C, D)
+    const PARAMS = new URLSearchParams({ sheet: "belum_scan", range: "I:J" });
+    const API_URL = `${SCRIPT_URL}?${PARAMS.toString()}`;
+    // ===========================
+
+    const statusEl = document.getElementById('status');
+    const errorEl = document.getElementById('error');
+    const tableWrap = document.getElementById('tableWrap');
+    const reloadBtn = document.getElementById('reloadBtn');
+
+    async function fetchData() {
+      setStatus("Memuat data…");
+      hideError();
+      disableReload(true);
+
+      try {
+        const res = await fetch(API_URL, { method: "GET", headers: { "Accept": "application/json" } });
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+
+        const data = await res.json();
+
+        // Data bisa berupa:
+        // 1) Array of Objects (jika pakai API versi header → lebih rapi)
+        // 2) Array of Arrays (jika pakai API versi mentah)
+        // Kita dukung keduanya.
+
+        if (Array.isArray(data) && data.length > 0) {
+          if (isArrayOfObjects(data)) {
+            renderTableFromObjects(data);
+          } else {
+            renderTableFromArrays(data);
+          }
+          setStatus(`Sukses. ${countRows(data)} baris ditampilkan.`);
+        } else {
+          tableWrap.innerHTML = "";
+          setStatus("Tidak ada data (0 baris).");
+        }
+
+      } catch (err) {
+        tableWrap.innerHTML = "";
+        showError("Gagal memuat: " + err.message);
+        setStatus("Gagal memuat.");
+      } finally {
+        disableReload(false);
+      }
+    }
+
+    function isArrayOfObjects(arr) {
+      return typeof arr[0] === "object" && !Array.isArray(arr[0]);
+    }
+
+    function countRows(data) {
+      // Jika array-of-arrays dan baris pertama header, hitung tanpa header
+      if (Array.isArray(data[0])) {
+        const firstRow = data[0] || [];
+        const hasHeader = firstRow.some(v => String(v || "").trim() !== "");
+        return Math.max(0, data.length - (hasHeader ? 1 : 0));
+      }
+      return data.length;
+    }
+
+    function renderTableFromObjects(rows) {
+      // Ambil semua key dari header objek
+      const headers = Object.keys(rows[0]);
+
+      const thead = `<thead><tr>${headers.map(h => `<th>${escapeHTML(h)}</th>`).join("")}</tr></thead>`;
+      const tbody = `<tbody>${
+        rows.map(row => {
+          return `<tr>${headers.map(h => `<td>${escapeHTML(row[h])}</td>`).join("")}</tr>`;
+        }).join("")
+      }</tbody>`;
+
+      tableWrap.innerHTML = `<div style="overflow:auto"><table>${thead}${tbody}</table></div>`;
+    }
+
+    function renderTableFromArrays(arr) {
+      // Anggap baris pertama = header
+      const headers = arr[0] || [];
+      const rows = arr.slice(1);
+
+      const thead = `<thead><tr>${headers.map(h => `<th>${escapeHTML(h)}</th>`).join("")}</tr></thead>`;
+      const tbody = `<tbody>${
+        rows.map(r => `<tr>${r.map(c => `<td>${escapeHTML(c)}</td>`).join("")}</tr>`).join("")
+      }</tbody>`;
+
+      tableWrap.innerHTML = `<div style="overflow:auto"><table>${thead}${tbody}</table></div>`;
+    }
+
+    function escapeHTML(val) {
+      return String(val ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function setStatus(msg) { statusEl.textContent = msg; }
+    function showError(msg) { errorEl.textContent = msg; errorEl.classList.remove("hidden"); }
+    function hideError() { errorEl.textContent = ""; errorEl.classList.add("hidden"); }
+    function disableReload(disabled) { reloadBtn.disabled = disabled; }
+
+    reloadBtn.addEventListener('click', fetchData);
+
+    // Auto-load saat halaman dibuka
+    fetchData();
+  </script>
+</body>
+</html>
