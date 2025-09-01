@@ -35,7 +35,7 @@
     // Ganti dengan URL Web App Apps Script kamu (menu Deploy → Web app)
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw5axaPMrVkcqn92VMDRSuJl1LwRBCibU3DkMtu40jrYqGfRiNAomQhfcl0g3qPUl2OKg/exec";
     // Kita minta sheet=Sheet4 dan range=B:D (kolom B, C, D)
-    const PARAMS = new URLSearchParams({ sheet: "belum_scan", range: "I:J" });
+    const PARAMS = new URLSearchParams({action:"range", sheet: "belum_scan", range: "I:J" });
     const API_URL = `${SCRIPT_URL}?${PARAMS.toString()}`;
     // ===========================
 
