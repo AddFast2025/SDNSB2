@@ -41,75 +41,86 @@ text-align: center;
     <tbody></tbody>
   </table>
 
-  <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzJ9QqT8AjJWhcBl4WDEuS6VTz-2lTw9nt8H-acvf9mNf_sZrXV9-l3VDqN0NVuqjMK8g/exec";
-    const FIXED_PARAMS = { sheet: 'belumsubuh', range: 'C1:F100' };
+<script>
+  const API_URL = "https://script.google.com/macros/s/AKfycbzJ9QqT8AjJWhcBl4WDEuS6VTz-2lTw9nt8H-acvf9mNf_sZrXV9-l3VDqN0NVuqjMK8g/exec";
+  const FIXED_PARAMS = { sheet: 'belumsubuh', range: 'C1:F100' };
 
-    const table = document.getElementById('dataTable');
-    const thead = table.querySelector('thead');
-    const tbody = table.querySelector('tbody');
+  const table = document.getElementById('dataTable');
+  const thead = table.querySelector('thead');
+  const tbody = table.querySelector('tbody');
 
-    function buildUrl(base, paramsObj) {
-      const url = new URL(base);
-      const params = new URLSearchParams(paramsObj);
-      url.search = params.toString();
-      return url.toString();
+  function buildUrl(base, paramsObj) {
+    const url = new URL(base);
+    const params = new URLSearchParams(paramsObj);
+    url.search = params.toString();
+    return url.toString();
+  }
+
+  async function loadData() {
+    const url = buildUrl(API_URL, FIXED_PARAMS);
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' — ' + res.statusText);
+      const json = await res.json();
+
+      if (json.error) throw new Error(json.error);
+
+      const rows = Array.isArray(json.data) ? json.data.filter(row => {
+        return Object.values(row).some(val => val !== null && val !== undefined && String(val).trim() !== '');
+      }) : [];
+
+      renderTable(rows);
+    } catch (err) {
+      console.error('Gagal memuat:', err.message);
+      table.hidden = true;
     }
+  }
 
-    async function loadData() {
-      const url = buildUrl(API_URL, FIXED_PARAMS);
-      try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error('HTTP ' + res.status + ' — ' + res.statusText);
-        const json = await res.json();
+  // 👉 di sini taruh fungsi renderTable yang sudah dimodif
+  function renderTable(rows) {
+    thead.innerHTML = '';
+    tbody.innerHTML = '';
 
-        if (json.error) throw new Error(json.error);
-
-        // Filter baris yang memiliki teks di setidaknya satu kolom
-        const rows = Array.isArray(json.data) ? json.data.filter(row => {
-          return Object.values(row).some(val => val !== null && val !== undefined && String(val).trim() !== '');
-        }) : [];
-
-        renderTable(rows);
-      } catch (err) {
-        console.error('Gagal memuat:', err.message);
-        table.hidden = true;
-      }
-    }
-
-    function renderTable(rows) {
-      thead.innerHTML = '';
-      tbody.innerHTML = '';
-
-      if (!rows.length) {
-        table.hidden = false;
-        return;
-      }
-
-      const headers = Object.keys(rows[0]);
-      const trh = document.createElement('tr');
-      headers.forEach(h => {
-        const th = document.createElement('th');
-        th.textContent = h;
-        trh.appendChild(th);
-      });
-      thead.appendChild(trh);
-
-      rows.forEach(obj => {
-        const tr = document.createElement('tr');
-        headers.forEach(h => {
-          const td = document.createElement('td');
-          const val = obj[h];
-          td.textContent = (val === null || val === undefined) ? '' : String(val);
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      });
-
+    if (!rows.length) {
       table.hidden = false;
+      return;
     }
 
-    loadData();
+    const headers = Object.keys(rows[0]);
+    const trh = document.createElement('tr');
+    headers.forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+
+    rows.forEach(obj => {
+      const tr = document.createElement('tr');
+      headers.forEach((h, idx) => {
+        const td = document.createElement('td');
+        const val = obj[h];
+        td.textContent = (val === null || val === undefined) ? '' : String(val);
+        tr.appendChild(td);
+      });
+
+      // 🔴 cek nilai kolom ke-4
+      const nilaiCell = tr.querySelector('td:nth-child(4)');
+      if (nilaiCell && nilaiCell.textContent.trim() === "0") {
+        tr.querySelectorAll('td').forEach(td => {
+          td.style.color = "red";
+          td.style.backgroundColor = "#ffe5e5"; // merah muda
+        });
+      }
+
+      tbody.appendChild(tr);
+    });
+
+    table.hidden = false;
+  }
+
+  loadData();
+
   </script>
 </body>
 </html>
