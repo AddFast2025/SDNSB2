@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Home - SDN Sidobandung II</title>
   <style>
+
+    .btn-kanan-atas {
+      position: fixed; /* selalu ikut layar, meski discroll */
+      top: 10px;       /* jarak dari atas */
+      right: 10px;     /* jarak dari kanan */
+    }
+.btn-kanan-atas button {
+      border: none;        /* hilangkan border */
+      padding:2px 2px;  /* biar agak besar */
+      background: #3498db; /* warna biru */
+      color: blue;        /* teks putih */
+      border-radius: 10px;  /* sudut agak melengkung */
+      cursor: pointer;
+    }
+
     body {
       margin: 0;
       font-family: system-ui, Arial, sans-serif;
@@ -66,6 +81,11 @@
   </style>
 </head>
 <body>
+
+  <a href="https://example.com" class="btn-kanan-atas">
+  <button>.</button>
+</a>
+  
   <header>
   <img 
     src="https://i.imgur.com/RruvYpK.jpeg" 
