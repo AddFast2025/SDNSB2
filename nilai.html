@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Data Siswa Belum Scan Hari Ini</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    body { margin: 24px; }
+    h1 { margin-bottom: 16px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 16px; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #f5f5f5; text-align: left; }
+
+    /* Kolom A dan B diperkecil dan rata tengah */
+    th:nth-child(1), td:nth-child(1),
+th:nth-child(4), td:nth-child(4),
+th:nth-child(5), td:nth-child(5),
+th:nth-child(6), td:nth-child(6),
+    th:nth-child(2), td:nth-child(2) {
+      width: 30px;       /* sesuaikan sesuai kebutuhan */
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>Nilai Siswa</h2>
+
+  <table id="Nilai" hidden>
+    <thead></thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzJ9QqT8AjJWhcBl4WDEuS6VTz-2lTw9nt8H-acvf9mNf_sZrXV9-l3VDqN0NVuqjMK8g/exec";
+    const FIXED_PARAMS = { sheet: 'Nilai', range: 'A1:F100' };
+
+    const table = document.getElementById('Nilai');
+    const thead = table.querySelector('thead');
+    const tbody = table.querySelector('tbody');
+
+    function buildUrl(base, paramsObj) {
+      const url = new URL(base);
+      const params = new URLSearchParams(paramsObj);
+      url.search = params.toString();
+      return url.toString();
+    }
+
+    async function loadData() {
+      const url = buildUrl(API_URL, FIXED_PARAMS);
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' — ' + res.statusText);
+        const json = await res.json();
+
+        if (json.error) throw new Error(json.error);
+
+        // Filter baris yang memiliki teks di setidaknya satu kolom
+        const rows = Array.isArray(json.data) ? json.data.filter(row => {
+          return Object.values(row).some(val => val !== null && val !== undefined && String(val).trim() !== '');
+        }) : [];
+
+        renderTable(rows);
+      } catch (err) {
+        console.error('Gagal memuat:', err.message);
+        table.hidden = true;
+      }
+    }
+
+    function renderTable(rows) {
+      thead.innerHTML = '';
+      tbody.innerHTML = '';
+
+      if (!rows.length) {
+        table.hidden = false;
+        return;
+      }
+
+      const headers = Object.keys(rows[0]);
+      const trh = document.createElement('tr');
+      headers.forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        trh.appendChild(th);
+      });
+      thead.appendChild(trh);
+
+      rows.forEach(obj => {
+        const tr = document.createElement('tr');
+        headers.forEach(h => {
+          const td = document.createElement('td');
+          const val = obj[h];
+          td.textContent = (val === null || val === undefined) ? '' : String(val);
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+
+      table.hidden = false;
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
