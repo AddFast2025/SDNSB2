@@ -3,46 +3,71 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Data Siswa Belum Scan Hari Ini</title>
+  <title>Data Siswa - Sort & Download</title>
   <style>
-    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     body { margin: 24px; }
-    h1 { margin-bottom: 16px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 16px; }
+    h2 { margin-bottom: 8px; }
+    .controls { margin-bottom: 12px; }
+    .controls button { margin-left: 6px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 8px; }
     th, td { border: 1px solid #ddd; padding: 8px; }
     th { background: #f5f5f5; text-align: left; }
-
-    /* Kolom A dan B diperkecil dan rata tengah */
     th:nth-child(1), td:nth-child(1),
-th:nth-child(4), td:nth-child(4),
-th:nth-child(5), td:nth-child(5),
-th:nth-child(6), td:nth-child(6),
-    th:nth-child(2), td:nth-child(2) {
-      width: 20px;       /* sesuaikan sesuai kebutuhan */
+    th:nth-child(2), td:nth-child(2),
+    th:nth-child(4), td:nth-child(4),
+    th:nth-child(5), td:nth-child(5),
+    th:nth-child(6), td:nth-child(6) {
+      width: 48px;
       text-align: center;
     }
+    .info { color: #555; font-size: 0.9rem; margin-top: 6px; }
   </style>
 </head>
 <body>
   <h2>Nilai Siswa</h2>
 
-  <table id="Nilai" hidden>
+  <div class="controls">
+    <label for="sortSelect">Urutkan berdasarkan: </label>
+    <select id="sortSelect">
+      <option value="default">Default (as-loaded)</option>
+      <option value="dsp">Dsp (desc)</option>
+      <option value="sbh">Sbh (desc)</option>
+      <option value="jml">Jml (desc)</option>
+    </select>
+ <p></p>
+    <button id="downloadExcel">Download Excel</button>
+    <button id="downloadPDF">Download PDF</button>
+  </div>
+
+  <table id="nilaiTable">
     <thead></thead>
     <tbody></tbody>
   </table>
+
+  <div class="info">Ambil data...</div>
+
+  <!-- library eksternal -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbzJ9QqT8AjJWhcBl4WDEuS6VTz-2lTw9nt8H-acvf9mNf_sZrXV9-l3VDqN0NVuqjMK8g/exec";
     const FIXED_PARAMS = { sheet: 'Nilai', range: 'A1:F100' };
 
-    const table = document.getElementById('Nilai');
+    const table = document.getElementById('nilaiTable');
     const thead = table.querySelector('thead');
     const tbody = table.querySelector('tbody');
+    const sortSelect = document.getElementById('sortSelect');
+
+    let dataRows = [];
+    let originalData = [];
+    let headers = [];
 
     function buildUrl(base, paramsObj) {
       const url = new URL(base);
-      const params = new URLSearchParams(paramsObj);
-      url.search = params.toString();
+      url.search = new URLSearchParams(paramsObj).toString();
       return url.toString();
     }
 
@@ -50,20 +75,23 @@ th:nth-child(6), td:nth-child(6),
       const url = buildUrl(API_URL, FIXED_PARAMS);
       try {
         const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error('HTTP ' + res.status + ' — ' + res.statusText);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         const json = await res.json();
-
         if (json.error) throw new Error(json.error);
 
-        // Filter baris yang memiliki teks di setidaknya satu kolom
-        const rows = Array.isArray(json.data) ? json.data.filter(row => {
-          return Object.values(row).some(val => val !== null && val !== undefined && String(val).trim() !== '');
-        }) : [];
+        const rows = Array.isArray(json.data) ? json.data.filter(row =>
+          Object.values(row).some(v => v !== null && v !== undefined && String(v).trim() !== '')
+        ) : [];
 
-        renderTable(rows);
+        dataRows = rows.slice();
+        originalData = JSON.parse(JSON.stringify(rows));
+        headers = rows.length ? Object.keys(rows[0]) : [];
+
+        renderTable(dataRows);
       } catch (err) {
         console.error('Gagal memuat:', err.message);
-        table.hidden = true;
+        thead.innerHTML = '';
+        tbody.innerHTML = '<tr><td colspan="6">Gagal memuat data.</td></tr>';
       }
     }
 
@@ -72,32 +100,118 @@ th:nth-child(6), td:nth-child(6),
       tbody.innerHTML = '';
 
       if (!rows.length) {
-        table.hidden = false;
+        tbody.innerHTML = '<tr><td colspan="6">Tidak ada data.</td></tr>';
         return;
       }
 
-      const headers = Object.keys(rows[0]);
+      const hdrs = headers.length ? headers : Object.keys(rows[0]);
       const trh = document.createElement('tr');
-      headers.forEach(h => {
+      hdrs.forEach(h => {
         const th = document.createElement('th');
         th.textContent = h;
         trh.appendChild(th);
       });
       thead.appendChild(trh);
 
-      rows.forEach(obj => {
+      rows.forEach((obj, i) => {
         const tr = document.createElement('tr');
-        headers.forEach(h => {
+        hdrs.forEach((h, idx) => {
           const td = document.createElement('td');
-          const val = obj[h];
-          td.textContent = (val === null || val === undefined) ? '' : String(val);
+          if (idx === 0) {
+            td.textContent = i + 1; // nomor urut baru
+          } else {
+            td.textContent = obj[h] ?? "";
+          }
           tr.appendChild(td);
         });
         tbody.appendChild(tr);
       });
-
-      table.hidden = false;
     }
+
+    function toNumber(v) {
+      if (v === null || v === undefined) return NaN;
+      const s = String(v).replace(/,/g, '').trim();
+      const cleaned = s.replace(/[^\d\.\-]/g, '');
+      const n = parseFloat(cleaned);
+      return Number.isFinite(n) ? n : NaN;
+    }
+
+    function compareValues(aVal, bVal, order = 'desc') {
+      const aNum = toNumber(aVal);
+      const bNum = toNumber(bVal);
+      if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
+        return order === 'asc' ? (aNum - bNum) : (bNum - aNum);
+      }
+      return 0;
+    }
+
+    function sortByOption(opt) {
+      if (!dataRows.length) return;
+      if (opt === 'default') {
+        dataRows = JSON.parse(JSON.stringify(originalData));
+        renderTable(dataRows);
+        return;
+      }
+
+      let prop, order = 'desc';
+      if (opt === 'dsp') prop = headers[3];
+      if (opt === 'sbh') prop = headers[4];
+      if (opt === 'jml') prop = headers[5];
+
+      if (prop) {
+        dataRows.sort((a, b) => compareValues(a[prop], b[prop], order));
+      }
+      renderTable(dataRows);
+    }
+
+    sortSelect.addEventListener('change', (e) => {
+      sortByOption(e.target.value);
+    });
+
+    // Download Excel
+    document.getElementById('downloadExcel').addEventListener('click', () => {
+      const ws_data = [];
+      const header = ["No"].concat(headers.slice(1));
+      ws_data.push(header);
+
+      dataRows.forEach((obj, i) => {
+        const row = [i + 1];
+        headers.forEach((h, idx) => {
+          if (idx === 0) return;
+          row.push(obj[h] ?? "");
+        });
+        ws_data.push(row);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Data");
+      XLSX.writeFile(wb, "nilai_siswa.xlsx");
+    });
+
+    // Download PDF
+    document.getElementById('downloadPDF').addEventListener('click', () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const head = [["No"].concat(headers.slice(1))];
+      const body = dataRows.map((obj, i) => {
+        const row = [i + 1];
+        headers.forEach((h, idx) => {
+          if (idx === 0) return;
+          row.push(obj[h] ?? "");
+        });
+        return row;
+      });
+
+      doc.text("Nilai Siswa", 14, 15);
+      doc.autoTable({
+        head: head,
+        body: body,
+        startY: 20
+      });
+      doc.save("nilai_siswa.pdf");
+    });
 
     loadData();
   </script>
