@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin - Kotak Saran (Demo)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: #ecf0f1;
+      margin: 0;
+      padding: 20px;
+    }
+    h2 {
+      text-align: center;
+      color: #2d3436;
+      margin-bottom: 20px;
+    }
+    .card {
+ margin: 20px auto;
+max-width: 400px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    .info-line {
+      font-weight: 600;
+      color: #2d3436;
+      margin-bottom: 5px;
+    }
+    .info-line small {
+      color: #636e72;
+      font-weight: 400;
+    }
+    .kategori-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .kategori-bar span {
+      background: #0984e3;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .pesan {
+      background: #f1f2f6;
+      border-left: 4px solid #0984e3;
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      white-space: pre-wrap;
+    }
+    textarea {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #b2bec3;
+      padding: 8px;
+      box-sizing: border-box;
+      resize: vertical;
+      min-height: 60px;
+      margin-bottom: 10px;
+    }
+    button {
+      background: #00b894;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background: #55efc4; }
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      .card { padding: 12px; }
+      button { width: 100%; margin-top: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <h2>📋 Daftar Saran & Masukan (Demo)</h2>
+
+  <!-- ====== Data Dummy 1 ====== -->
+  <div class="card">
+    <div class="info-line">
+      🗓️ 16 Oktober 2025<br>👤 Siti Aisyah
+    </div>
+    <div class="kategori-bar">
+      <span>Saran</span>
+      <button>💾 Simpan</button>
+    </div>
+    <div class="pesan">
+      <b>Pesan:</b><br>
+      Tolong tambahkan tempat duduk di taman sekolah agar siswa bisa membaca di luar kelas.
+    </div>
+    <label><b>Tanggapan Admin:</b></label>
+    <textarea>Baik, usulan akan kami bahas dalam rapat sekolah minggu depan.</textarea>
+  </div>
+
+  <!-- ====== Data Dummy 2 ====== -->
+  <div class="card">
+    <div class="info-line">
+      🗓️ 15 Oktober 2025<br>👤 Budi Santoso
+    </div>
+    <div class="kategori-bar">
+      <span>Kritik</span>
+      <button>💾 Simpan</button>
+    </div>
+    <div class="pesan">
+      <b>Pesan:</b><br>
+      Beberapa lampu di lorong kelas sudah mati. Mohon segera diperbaiki karena gelap saat sore hari.
+    </div>
+    <label><b>Tanggapan Admin:</b></label>
+    <textarea placeholder="Tulis tanggapan di sini..."></textarea>
+  </div>
+
+  <!-- ====== Data Dummy 3 ====== -->
+  <div class="card">
+    <div class="info-line">
+      🗓️ 14 Oktober 2025<br>👤 Anonim
+    </div>
+    <div class="kategori-bar">
+      <span>Masukan Umum</span>
+      <button>💾 Simpan</button>
+    </div>
+    <div class="pesan">
+      <b>Pesan:</b><br>
+      Acara Jumat bersih sangat bagus! Mungkin bisa ditambah lomba kebersihan antar kelas.
+    </div>
+    <label><b>Tanggapan Admin:</b></label>
+    <textarea>Terima kasih, ide lomba kebersihan akan kami pertimbangkan untuk bulan depan.</textarea>
+  </div>
+
+</body>
+</html>
