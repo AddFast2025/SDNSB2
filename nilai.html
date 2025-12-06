@@ -1,219 +1,113 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Data Siswa - Sort & Download</title>
+  <title>Nilai Kedisiplinan Siswa</title>
   <style>
-    :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { margin: 24px; }
-    h2 { margin-bottom: 8px; }
-    .controls { margin-bottom: 12px; }
-    .controls button { margin-left: 6px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 8px; }
-    th, td { border: 1px solid #ddd; padding: 8px; }
-    th { background: #f5f5f5; text-align: left; }
-    th:nth-child(1), td:nth-child(1),
-    th:nth-child(2), td:nth-child(2),
-    th:nth-child(4), td:nth-child(4),
-    th:nth-child(5), td:nth-child(5),
-    th:nth-child(6), td:nth-child(6) {
-      width: 48px;
-      text-align: center;
+    :root{
+      --bg:#f7f9fb; --card:#ffffff; --accent:#1766a0; --muted:#6b7280;
     }
-    .info { color: #555; font-size: 0.9rem; margin-top: 6px; }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{background:var(--bg);color:#0f172a}
+    .wrap{max-width:380px;margin:0 auto;padding:12px}
+
+    header{display:flex;align-items:center;gap:12px}
+    h1{font-size:20px;margin:0;line-height:1.1}
+    p.subtitle{margin:0;color:var(--muted);font-size:13px}
+
+    .btn-row{display:flex;gap:8px;margin-top:12px}
+    .btn{flex:0 0 auto;padding:6px 4px;border-radius:10px;border:0;background:linear-gradient(180deg,#ffffff,#f0f6fb);box-shadow:0 1px 2px rgba(2,6,23,0.06);font-weight:600}
+    .btn.active{background:var(--accent);color:#fff;box-shadow:0 6px 20px rgba(23,102,160,0.18);}
+
+    .card{background:var(--card);border-radius:14px;padding:0;margin-top:12px;overflow:hidden;min-height:60vh;box-shadow:0 6px 24px rgba(2,6,23,0.04)}
+    .frame-wrap{width:100%;height:calc(100vh - 180px);min-height:420px}
+    .frame{width:100%;height:100%;border:0}
+
+    /* small helpers */
+    .hidden{display:none}
+
+    /* responsive tweaks */
+    @media (min-width:560px){
+      .wrap{padding:18px}
+      h1{font-size:22px}
+      .frame-wrap{height:calc(100vh - 220px)}
+    }
   </style>
 </head>
 <body>
-  <h2>Nilai Siswa</h2>
+  <main class="wrap">
+    <header>
+      <div>
+        <h1>Nilai Kedisiplinan Siswa</h1>
+        
+      </div>
+    </header>
 
-  <div class="controls">
-    <label for="sortSelect">Urutkan berdasarkan: </label>
-    <select id="sortSelect">
-      <option value="default">Default (as-loaded)</option>
-      <option value="dsp">Dsp (desc)</option>
-      <option value="sbh">Sbh (desc)</option>
-      <option value="jml">Jml (desc)</option>
-    </select>
- <p></p>
-    <button id="downloadExcel">Download Excel</button>
-    <button id="downloadPDF">Download PDF</button>
-  </div>
+    <nav class="btn-row" role="tablist" aria-label="Kontrol tabel">
+      <button class="btn active" data-target="nilai" role="tab" aria-selected="true">Nilai</button>
+      <button class="btn" data-target="peringkat" role="tab" aria-selected="false">Peringkat</button>
+      <button class="btn" data-target="calon" role="tab" aria-selected="false">Calon Penegak</button>
+    </nav>
 
-  <table id="nilaiTable">
-    <thead></thead>
-    <tbody></tbody>
-  </table>
+    <section class="card" id="viewer">
+      <div id="nilai" class="frame-wrap">
+        <iframe class="frame" loading="lazy" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRgEHp1RZ9F599zPsRVi1f5-cTcZufEGTaitG8Wqdd0rcrtvivcSxIb-P_noCUYAbWKBFXGoOE2CPOQ/pubhtml?gid=1323508127&amp;single=true&amp;widget=true&amp;headers=false" title="Tabel Nilai"></iframe>
+      </div>
 
-  <div class="info">Ambil data...</div>
+      <div id="peringkat" class="frame-wrap hidden">
+        <iframe class="frame" loading="lazy" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRgEHp1RZ9F599zPsRVi1f5-cTcZufEGTaitG8Wqdd0rcrtvivcSxIb-P_noCUYAbWKBFXGoOE2CPOQ/pubhtml?gid=2146414410&amp;single=true&amp;widget=true&amp;headers=false" title="Tabel Peringkat"></iframe>
+      </div>
 
-  <!-- library eksternal -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+      <div id="calon" class="frame-wrap hidden">
+        <iframe class="frame" loading="lazy" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRgEHp1RZ9F599zPsRVi1f5-cTcZufEGTaitG8Wqdd0rcrtvivcSxIb-P_noCUYAbWKBFXGoOE2CPOQ/pubhtml?gid=869561822&amp;single=true&amp;widget=true&amp;headers=false" title="Tabel Calon Penegak"></iframe>
+      </div>
+    </section>
+  </main>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzJ9QqT8AjJWhcBl4WDEuS6VTz-2lTw9nt8H-acvf9mNf_sZrXV9-l3VDqN0NVuqjMK8g/exec";
-    const FIXED_PARAMS = { sheet: 'Nilai', range: 'A1:F100' };
+    // tombol tab switching
+    (function(){
+      const buttons = document.querySelectorAll('.btn-row .btn');
+      const panels = {
+        nilai: document.getElementById('nilai'),
+        peringkat: document.getElementById('peringkat'),
+        calon: document.getElementById('calon')
+      };
 
-    const table = document.getElementById('nilaiTable');
-    const thead = table.querySelector('thead');
-    const tbody = table.querySelector('tbody');
-    const sortSelect = document.getElementById('sortSelect');
-
-    let dataRows = [];
-    let originalData = [];
-    let headers = [];
-
-    function buildUrl(base, paramsObj) {
-      const url = new URL(base);
-      url.search = new URLSearchParams(paramsObj).toString();
-      return url.toString();
-    }
-
-    async function loadData() {
-      const url = buildUrl(API_URL, FIXED_PARAMS);
-      try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const json = await res.json();
-        if (json.error) throw new Error(json.error);
-
-        const rows = Array.isArray(json.data) ? json.data.filter(row =>
-          Object.values(row).some(v => v !== null && v !== undefined && String(v).trim() !== '')
-        ) : [];
-
-        dataRows = rows.slice();
-        originalData = JSON.parse(JSON.stringify(rows));
-        headers = rows.length ? Object.keys(rows[0]) : [];
-
-        renderTable(dataRows);
-      } catch (err) {
-        console.error('Gagal memuat:', err.message);
-        thead.innerHTML = '';
-        tbody.innerHTML = '<tr><td colspan="6">Gagal memuat data.</td></tr>';
-      }
-    }
-
-    function renderTable(rows) {
-      thead.innerHTML = '';
-      tbody.innerHTML = '';
-
-      if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="6">Tidak ada data.</td></tr>';
-        return;
-      }
-
-      const hdrs = headers.length ? headers : Object.keys(rows[0]);
-      const trh = document.createElement('tr');
-      hdrs.forEach(h => {
-        const th = document.createElement('th');
-        th.textContent = h;
-        trh.appendChild(th);
-      });
-      thead.appendChild(trh);
-
-      rows.forEach((obj, i) => {
-        const tr = document.createElement('tr');
-        hdrs.forEach((h, idx) => {
-          const td = document.createElement('td');
-          if (idx === 0) {
-            td.textContent = i + 1; // nomor urut baru
-          } else {
-            td.textContent = obj[h] ?? "";
-          }
-          tr.appendChild(td);
+      function setActive(target){
+        buttons.forEach(b=>{
+          const t = b.getAttribute('data-target');
+          const active = t === target;
+          b.classList.toggle('active', active);
+          b.setAttribute('aria-selected', active? 'true' : 'false');
+          // show/hide panels
+          if(panels[t]) panels[t].classList.toggle('hidden', !active);
         });
-        tbody.appendChild(tr);
-      });
-    }
-
-    function toNumber(v) {
-      if (v === null || v === undefined) return NaN;
-      const s = String(v).replace(/,/g, '').trim();
-      const cleaned = s.replace(/[^\d\.\-]/g, '');
-      const n = parseFloat(cleaned);
-      return Number.isFinite(n) ? n : NaN;
-    }
-
-    function compareValues(aVal, bVal, order = 'desc') {
-      const aNum = toNumber(aVal);
-      const bNum = toNumber(bVal);
-      if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
-        return order === 'asc' ? (aNum - bNum) : (bNum - aNum);
-      }
-      return 0;
-    }
-
-    function sortByOption(opt) {
-      if (!dataRows.length) return;
-      if (opt === 'default') {
-        dataRows = JSON.parse(JSON.stringify(originalData));
-        renderTable(dataRows);
-        return;
+        // scroll iframe into view on small screens
+        const el = panels[target];
+        if(el) el.scrollIntoView({behavior:'smooth'});
       }
 
-      let prop, order = 'desc';
-      if (opt === 'dsp') prop = headers[3];
-      if (opt === 'sbh') prop = headers[4];
-      if (opt === 'jml') prop = headers[5];
-
-      if (prop) {
-        dataRows.sort((a, b) => compareValues(a[prop], b[prop], order));
-      }
-      renderTable(dataRows);
-    }
-
-    sortSelect.addEventListener('change', (e) => {
-      sortByOption(e.target.value);
-    });
-
-    // Download Excel
-    document.getElementById('downloadExcel').addEventListener('click', () => {
-      const ws_data = [];
-      const header = ["No"].concat(headers.slice(1));
-      ws_data.push(header);
-
-      dataRows.forEach((obj, i) => {
-        const row = [i + 1];
-        headers.forEach((h, idx) => {
-          if (idx === 0) return;
-          row.push(obj[h] ?? "");
+      buttons.forEach(b=>{
+        b.addEventListener('click', ()=>{
+          const t = b.getAttribute('data-target');
+          setActive(t);
         });
-        ws_data.push(row);
       });
 
-      const ws = XLSX.utils.aoa_to_sheet(ws_data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Data");
-      XLSX.writeFile(wb, "nilai_siswa.xlsx");
-    });
-
-    // Download PDF
-    document.getElementById('downloadPDF').addEventListener('click', () => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-
-      const head = [["No"].concat(headers.slice(1))];
-      const body = dataRows.map((obj, i) => {
-        const row = [i + 1];
-        headers.forEach((h, idx) => {
-          if (idx === 0) return;
-          row.push(obj[h] ?? "");
-        });
-        return row;
+      // accessibility: switch by arrow keys when focused
+      document.querySelector('.btn-row').addEventListener('keydown', (ev)=>{
+        const key = ev.key;
+        const focused = document.activeElement;
+        if(!focused.classList || !focused.classList.contains('btn')) return;
+        const idx = Array.from(buttons).indexOf(focused);
+        if(key === 'ArrowRight') buttons[(idx+1)%buttons.length].focus();
+        if(key === 'ArrowLeft') buttons[(idx-1+buttons.length)%buttons.length].focus();
+        if(key === 'Enter' || key === ' ') { focused.click(); ev.preventDefault(); }
       });
-
-      doc.text("Nilai Siswa", 14, 15);
-      doc.autoTable({
-        head: head,
-        body: body,
-        startY: 20
-      });
-      doc.save("nilai_siswa.pdf");
-    });
-
-    loadData();
+    })();
   </script>
 </body>
 </html>
