@@ -16,6 +16,13 @@
     header{display:flex;align-items:center;gap:12px}
     h1{font-size:20px;margin:0;line-height:1.1}
     p.subtitle{margin:0;color:var(--muted);font-size:13px}
+.btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 
     .btn-row{display:flex;gap:8px;margin-top:12px}
     .btn{flex:0 0 auto;padding:6px 4px;border-radius:10px;border:0;background:linear-gradient(180deg,#ffffff,#f0f6fb);box-shadow:0 1px 2px rgba(2,6,23,0.06);font-weight:600}
@@ -49,6 +56,10 @@
       <button class="btn active" data-target="nilai" role="tab" aria-selected="true">Nilai</button>
       <button class="btn" data-target="peringkat" role="tab" aria-selected="false">Peringkat</button>
       <button class="btn" data-target="calon" role="tab" aria-selected="false">Calon Penegak</button>
+<a class="btn" href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQdwFEoTJHiATkfaWybQRgBNBf_HpQWavJUWJ26Qd1DfuWTa_qSZS33Be8Gqwo9pxf9ZBf8unW8FtO9/pubhtml#gid=0" target="_blank" rel="noopener">
+  Harian
+</a>
+
     </nav>
 
     <section class="card" id="viewer">
@@ -62,7 +73,9 @@
 
       <div id="calon" class="frame-wrap hidden">
         <iframe class="frame" loading="lazy" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRgEHp1RZ9F599zPsRVi1f5-cTcZufEGTaitG8Wqdd0rcrtvivcSxIb-P_noCUYAbWKBFXGoOE2CPOQ/pubhtml?gid=869561822&amp;single=true&amp;widget=true&amp;headers=false" title="Tabel Calon Penegak"></iframe>
+
       </div>
+
     </section>
   </main>
 
