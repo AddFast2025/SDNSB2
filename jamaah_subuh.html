@@ -1,194 +1,269 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Scan Jamaah Subuh</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 0;
-      padding: 40px;
-      font-size: 18px;
-    }
-    #reader {
-      width: 100%;
-      max-width: 500px;
-      margin: 20px auto;
-      display: none; /* kamera disembunyikan dulu */
-    }
-    button {
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 14px 28px;
-      border-radius: 8px;
-      font-size: 22px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    #output {
-      margin-top: 20px;
-      font-weight: bold;
-      font-size: 16px;
-      min-height: 24px;
-    }
-    /* Style tabel history */
-    #historyTable {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 20px;
-margin: 20px auto;
-      font-size: 18px;
-      max-width: 600px;
-    }
-    #historyTable th, #historyTable td {
-      border: 1px solid #ddd;
-      padding: 8px;
-    }
-    #historyTable th {
-      background-color: #f2f2f2;
-      text-align: center;
-      font-weight: bold;
-    }
-    #historyTable td:nth-child(1) {
-      text-align: center;
-      width: 50px;
-    }
-    #historyTable td:nth-child(2) {
-      text-align: left;
-      padding-left: 8px;
-    }
-    #historyTable tr:nth-child(even) {
-      background-color: #fafafa;
-    }
-    #historyTable tr:hover {
-      background-color: #f1f1f1;
-    }
-    #filter {
-      margin: 15px 0;
-      font-size: 16px;
-      padding: 6px 10px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Absen Jamaah Subuh – Scan QR</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+body{font-family:Arial;background:#f4f6f8;padding:20px}
+.card{max-width:900px;margin:auto;background:#fff;padding:20px;border-radius:12px}
+h2{text-align:center;margin:0}
+.sub{text-align:center;color:#555;margin-bottom:15px}
+
+#scannerWrap{max-width:360px;margin:15px auto;position:relative}
+#reader{width:100%}
+#overlay{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#overlay.active{opacity:.8}
+
+button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;font-size:16px;cursor:pointer}
+.btn-on{background:#2e7d32;color:#fff}
+.btn-off{background:#c62828;color:#fff}
+
+.notice{display:none;padding:10px;border-radius:6px;margin-top:10px;font-weight:bold}
+.ok{background:#e8f5e9;color:#2e7d32}
+.err{background:#ffebee;color:#c62828}
+
+#tabelAbsen{table-layout:fixed;margin-top:15px}
+#tabelAbsen th:nth-child(1),#tabelAbsen td:nth-child(1){width:36px;text-align:center}
+#tabelAbsen th:nth-child(3),#tabelAbsen td:nth-child(3){width:50px;text-align:center}
+#tabelAbsen thead th{background:#1976d2;color:#fff;text-align:center}
+</style>
 </head>
+
 <body>
-  <h1>Scan Jamaah Subuh</h1>
+<div class="card">
+<h2>ABSEN JAMAAH SUBUH</h2>
+<div class="sub" id="judulLembaga">Memuat...</div>
+
+<div id="scannerWrap">
   <div id="reader"></div>
-  <button id="scanBtn">▶️ Start Scan</button>
-  <p id="output"></p>
+  <div id="overlay"></div>
+</div>
 
-  <!-- Dropdown filter -->
-  <label for="filter">Filter Kelas: </label>
-  <select id="filter">
-    <option value="">Semua</option>
-    <option value="|1A">Kelas 1</option>
-    <option value="|2A">Kelas 2</option>
- <option value="|3A">Kelas 3</option>
- <option value="|4A">Kelas 4</option>
- <option value="|5A">Kelas 5</option>
- <option value="|6A">Kelas 6</option>
+<button class="btn-on" onclick="startCamera()">▶️ ON Kamera</button>
+<button class="btn-off" onclick="stopCamera()">⏹ OFF Kamera</button>
 
-  </select>
+<input type="file" id="fileScan" accept="image/*" style="margin-top:10px">
+<button onclick="scanDariFile()">📁 Scan dari File</button>
 
-  <!-- Tabel Data History -->
-  <table id="historyTable">
-    <thead>
-      <tr><th>No</th><th>Nama</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<div id="msgOk" class="notice ok"></div>
+<div id="msgErr" class="notice err"></div>
 
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzrpbRNFBIt2ryaO7EL_WFQc4RFaVAesj5QTOo1Yk0Zyt5HEaa_b0wrLwOKKsVrDrsesg/exec";
-    const scanBtn = document.getElementById("scanBtn");
-    const output = document.getElementById("output");
-    let html5QrCode;
+<h3 id="judulRombel">Daftar Absen</h3>
 
-    function beep(success = true) {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = success ? 800 : 400;
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      osc.start();
-      osc.stop(ctx.currentTime + (success ? 0.2 : 0.5));
+<table id="tabelAbsen" border="1" width="100%">
+<thead>
+<tr><th>No</th><th>Nama Siswa</th><th>Nilai</th></tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, getDoc,
+  query, where, doc, setDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* 🔊 AUDIO */
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+function beep(freq){
+  const o=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
+  o.connect(g); g.connect(audioCtx.destination);
+  o.frequency.value=freq; o.start();
+  g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+.25);
+  o.stop(audioCtx.currentTime+.25);
+}
+const beepOk=()=>beep(1000);
+const beepErr=()=>beep(300);
+
+/* FIREBASE */
+const app=initializeApp({
+  apiKey:"AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain:"datasiswa-c10f4.firebaseapp.com",
+  projectId:"datasiswa-c10f4"
+});
+const db=getFirestore(app);
+
+const lembagaId="kVMG9kghdBegwrtjxbuX";
+const tanggal=new Date().toLocaleDateString("en-CA");
+
+/* LOAD LEMBAGA */
+const snapL=await getDoc(doc(db,"lembaga",lembagaId));
+judulLembaga.innerText=snapL.data().nama;
+
+/* LOAD SISWA */
+const siswaMap={};
+let kelasAktif=null, rombelAktif=null;
+
+const snapS=await getDocs(query(
+  collection(db,"siswa"),
+  where("lembagaId","==",lembagaId)
+));
+snapS.forEach(d=>{
+  const s=d.data();
+  siswaMap[s.nama.toUpperCase()]={id:d.id,...s};
+});
+
+/* SCANNER */
+let scanner=null, aktif=false, proses=false;
+
+window.startCamera=async()=>{
+  if(aktif) return;
+  scanner=new Html5Qrcode("reader");
+  aktif=true;
+  await scanner.start({facingMode:"environment"},{fps:10,qrbox:250},
+    t=>prosesScan(t));
+};
+
+window.stopCamera=async()=>{
+  if(scanner){await scanner.stop();await scanner.clear();aktif=false;}
+};
+
+window.scanDariFile = async () => {
+
+  // 🔴 MATIKAN KAMERA JIKA SEDANG AKTIF
+  if(scanner && aktif){
+    await stopCamera();
+  }
+
+  if(!scanner){
+    scanner = new Html5Qrcode("reader");
+  }
+
+  const f = fileScan.files[0];
+  if(!f){
+    alert("Pilih gambar QR");
+    return;
+  }
+
+  try{
+    const text = await scanner.scanFile(f, true);
+
+    // 👉 proses tanpa pause/resume
+    await prosesScan(text, true);
+
+  }catch(e){
+    msgErr.innerText = "❌ Gagal membaca QR dari file";
+    msgErr.style.display = "block";
+    beepErr();
+  }
+};
+
+const PAUSE_SCAN = 2000; // 2 detik
+
+
+async function prosesScan(text, dariFile = false){
+
+  msgOk.style.display="none";
+  msgErr.style.display="none";
+
+  // pause hanya jika dari kamera
+  if(!dariFile && scanner && aktif){
+    scanner.pause();
+  }
+
+  let nama = text.split(":").pop().trim().toUpperCase();
+
+  if(!siswaMap[nama]){
+    msgErr.innerText = "❌ QR tidak dikenali";
+    msgErr.style.display = "block";
+    beepErr();
+
+    if(!dariFile){
+      setTimeout(()=>{
+        if(scanner && aktif) scanner.resume();
+      }, PAUSE_SCAN);
     }
+    return;
+  }
 
-    function loadHistory() {
-      const filter = document.getElementById("filter").value;
-      fetch(WEB_APP_URL + "?action=history")
-        .then(res => res.json())
-        .then(data => {
-          const tbody = document.querySelector("#historyTable tbody");
-          tbody.innerHTML = "";
-          data.forEach(row => {
-            if (filter === "" || row[1].startsWith(filter)) {
-              const tr = document.createElement("tr");
-              tr.innerHTML = `<td>${row[0]}</td><td>${row[1]}</td>`;
-              tbody.appendChild(tr);
-            }
-          });
-        })
-        .catch(err => console.error("Gagal load history:", err));
-    }
+  await kirimAbsen(siswaMap[nama]);
 
-    function startScan() {
-      const readerDiv = document.getElementById("reader");
-      readerDiv.style.display = "block";
-      html5QrCode = new Html5Qrcode("reader");
+  if(!dariFile){
+    setTimeout(()=>{
+      if(scanner && aktif) scanner.resume();
+    }, PAUSE_SCAN);
+  }
+}
 
-      html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 300, height: 300 } },
-        (decodedText) => {
-          html5QrCode.stop().then(() => {
-            readerDiv.style.display = "none";
-            html5QrCode.clear();
-            handleResult(decodedText);
-          });
-        }
-      ).catch(err => console.error("Gagal start scanner:", err));
-    }
 
-    function handleResult(decodedText) {
-      if (decodedText.charAt(0) === "|") {
-        fetch(WEB_APP_URL, {
-          method: "POST",
-          body: JSON.stringify({ qr: decodedText })
-        })
-        .then(res => {
-          if (res.ok) {
-            beep(true);
-            output.textContent = "✅ Berhasil terkirim: " + decodedText;
-            loadHistory();
-          } else {
-            throw new Error("Server tidak merespons OK");
-          }
-        })
-        .catch(err => {
-          beep(false);
-          output.textContent = "❌ Gagal terkirim, periksa koneksi!";
-        });
-      } else {
-        beep(false);
-        output.textContent = "❌ QR tidak valid!";
-      }
-    }
 
-    scanBtn.addEventListener("click", () => {
-      output.textContent = "";
-      startScan();
+/* ABSEN */
+async function kirimAbsen(s){
+  if(proses) return; proses=true;
+  kelasAktif=s.kelasId; rombelAktif=s.rombelId;
+
+  const ref=doc(db,"absen_jamaah_subuh",`${lembagaId}_${s.id}_${tanggal}`);
+  if((await getDoc(ref)).exists()){
+    msgErr.innerText=`⛔ ${s.nama} SUDAH ABSEN`;
+    msgErr.style.display="block";
+    beepErr();
+    proses=false;
+    return;
+  }
+
+  await setDoc(ref,{
+    lembagaId,siswaId:s.id,namaSiswa:s.nama,
+    kelasId:s.kelasId,rombelId:s.rombelId,
+    tanggal,
+    jam:new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"}),
+    nilai:10,
+    dibuat:serverTimestamp()
+  });
+
+  msgOk.innerText=`✅ ${s.nama} BERHASIL ABSEN`;
+  msgOk.style.display="block";
+  beepOk();
+  proses=false;
+  loadTabel();
+}
+
+/* TABEL */
+async function loadTabel(){
+  if(!kelasAktif||!rombelAktif) return;
+
+  const siswaSnap=await getDocs(query(
+    collection(db,"siswa"),
+    where("kelasId","==",kelasAktif),
+    where("rombelId","==",rombelAktif)
+  ));
+
+  const absenSnap=await getDocs(query(
+    collection(db,"absen_jamaah_subuh"),
+    where("kelasId","==",kelasAktif),
+    where("rombelId","==",rombelAktif),
+    where("tanggal","==",tanggal)
+  ));
+
+  const mapAbsen={};
+  absenSnap.forEach(d=>mapAbsen[d.data().siswaId]=10);
+
+  const data=[];
+  siswaSnap.forEach(d=>{
+    data.push({
+      nama:d.data().nama,
+      nilai:mapAbsen[d.id]||0
     });
+  });
 
-    document.getElementById("filter").addEventListener("change", loadHistory);
+  data.sort((a,b)=>b.nilai-a.nilai||a.nama.localeCompare(b.nama));
 
-    loadHistory();
-    setInterval(loadHistory, 5000);
-  </script>
+  const tb=document.querySelector("#tabelAbsen tbody");
+  tb.innerHTML="";
+  data.forEach((d,i)=>{
+    tb.innerHTML+=`
+      <tr style="background:${d.nilai?'#e8f5e9':'#ffebee'}">
+        <td>${i+1}</td>
+        <td>${d.nama}</td>
+        <td><b>${d.nilai}</b></td>
+      </tr>`;
+  });
+}
+</script>
 </body>
 </html>
