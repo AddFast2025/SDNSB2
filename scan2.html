@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Absen Pagi – Scan QR</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+body{font-family:Arial;background:#f4f6f8;padding:20px}
+.card{max-width:900px;margin:auto;background:#fff;padding:20px;border-radius:12px}
+h2{text-align:center;margin:0}
+.sub{text-align:center;color:#555;margin-bottom:15px}
+
+#scannerWrap{max-width:360px;margin:15px auto;position:relative}
+#reader{width:100%}
+#overlay{
+  position:absolute;inset:0;background:white;
+  opacity:0;pointer-events:none;transition:.15s
+}
+#overlay.active{opacity:1}
+
+.scanText{
+  text-align:center;
+  margin-top:10px;
+  font-weight:bold;
+  color:#1976d2;
+}
+
+button{
+  width:100%;padding:12px;margin-top:8px;
+  border:none;border-radius:8px;font-size:16px;cursor:pointer
+}
+.btn-on{background:#2e7d32;color:#fff}
+.btn-off{background:#c62828;color:#fff}
+
+.notice{display:none;padding:10px;border-radius:6px;margin-top:10px}
+.ok{background:#e8f5e9;color:#2e7d32}
+.err{background:#ffebee;color:#c62828}
+
+
+/* ===== TABEL ABSEN ===== */
+#tabelAbsen {
+  table-layout: fixed; /* WAJIB supaya width dipatuhi */
+}
+
+/* Kolom No */
+#tabelAbsen th:nth-child(1),
+#tabelAbsen td:nth-child(1) {
+  width: 36px;
+  text-align: center;
+}
+
+/* Kolom Nama */
+#tabelAbsen th:nth-child(2),
+ text-align: center;
+#tabelAbsen td:nth-child(2) {
+  width: auto;
+  text-align: left;
+}
+
+/* Kolom Nilai */
+#tabelAbsen th:nth-child(3),
+#tabelAbsen td:nth-child(3) {
+  width: 50px;
+  text-align: center;
+  
+}
+
+/* Header tabel */
+#tabelAbsen thead th {
+  background: #1976d2;   /* biru */
+  color: #ffffff;       /* teks putih */
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+
+
+
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>ABSEN PAGI</h2>
+  <div class="sub" id="judulLembaga">Memuat lembaga...</div>
+
+  <div id="scannerWrap">
+    <div id="reader"></div>
+    <div id="overlay"></div>
+  </div>
+
+  <div class="scanText" id="hasilScan">-</div>
+
+  <button class="btn-on" onclick="startCamera()">▶️ ON Kamera</button>
+  <button class="btn-off" onclick="stopCamera()">⏹ OFF Kamera</button>
+
+<input
+  type="file"
+  id="fileScan"
+  accept="image/*"
+  style="margin-top:10px"
+>
+<button onclick="scanDariFile()">📁 Scan dari File</button>
+
+
+  <div id="msgOk" class="notice ok"></div>
+  <div id="msgErr" class="notice err"></div>
+
+<hr>
+
+<h3 id="judulRombel">Daftar Absen Kelas</h3>
+
+<table id="tabelAbsen" border="1" width="100%" cellspacing="0">
+  <thead>
+  <tr>
+    <th>No</th>
+    <th>Nama Siswa</th>
+    <th>Nilai</th>
+  </tr>
+</thead>
+
+  <tbody></tbody>
+</table>
+
+
+</div>
+
+
+<script type="module">
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, getDoc,
+  query, where, doc, setDoc, serverTimestamp
+} from
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* ================= FIREBASE ================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ================= KONFIG ================= */
+const lembagaId = "kVMG9kghdBegwrtjxbuX"; // ← PUNYAMU
+const tanggal = new Date().toLocaleDateString("en-CA");
+
+/* ================= AUDIO ================= */
+const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+function beep(f){
+  const o=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.frequency.value=f;o.start();
+  g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.2);
+  o.stop(audioCtx.currentTime+0.2);
+}
+const beepOk=()=>beep(1000);
+const beepErr=()=>beep(300);
+
+/* ================= LOAD LEMBAGA ================= */
+const kelasMap = {};
+const rombelMap = {};
+
+async function loadLembaga(){
+  const ref = doc(db,"lembaga",lembagaId);
+  const snap = await getDoc(ref);
+  if(snap.exists()){
+    judulLembaga.innerText =
+      snap.data().nama ;
+  }
+}
+loadLembaga();
+
+async function loadMaster(){
+  // KELAS
+  const kelasSnap = await getDocs(collection(db,"kelas"));
+  kelasSnap.forEach(d=>{
+    kelasMap[d.id] = d.data().nama;
+  });
+
+  // ROMBEL
+  const rombelSnap = await getDocs(collection(db,"rombel"));
+  rombelSnap.forEach(d=>{
+    rombelMap[d.id] = d.data().nama;
+  });
+}
+loadMaster();
+
+
+/* ================= LOAD SISWA ================= */
+const siswaMap = {};
+
+async function loadSiswa(){
+  const snap = await getDocs(query(
+    collection(db,"siswa"),
+    where("lembagaId","==",lembagaId)
+  ));
+
+  snap.forEach(d=>{
+    const s = d.data();
+    const nama = s.nama
+      .replace(/\s+/g," ")
+      .trim()
+      .toUpperCase();
+
+    siswaMap[nama] = {
+      id: d.id,
+      nama,
+      kelasId: s.kelasId,
+      rombelId: s.rombelId
+    };
+  });
+}
+loadSiswa();
+
+
+
+/* ================= KAMERA ================= */
+let scanner=null, aktif=false, proses=false;
+
+window.startCamera = async function(){
+  if(aktif) return;
+  scanner = new Html5Qrcode("reader");
+  aktif=true;
+
+  await scanner.start(
+    {facingMode:"environment"},
+    {fps:10, qrbox:250},
+    async(text)=>{
+      
+const hasil = text.trim();
+hasilScan.innerText =  hasil;
+
+// 🔑 AMBIL NAMA SETELAH TITIK DUA
+let namaScan = hasil;
+if(hasil.includes(":")){
+  namaScan = hasil.split(":").pop();
+}
+
+namaScan = namaScan
+  .replace(/\s+/g," ")
+  .trim()
+  .toUpperCase();
+
+if(!siswaMap[namaScan]) return;
+
+
+
+
+      scanner.pause();
+      overlay.classList.add("active");
+      await kirimAbsen(siswaMap[namaScan]);
+
+      setTimeout(()=>{
+        overlay.classList.remove("active");
+        scanner.resume();
+      },1200);
+    }
+  );
+};
+
+window.stopCamera = async function(){
+  if(scanner && aktif){
+    await scanner.stop();
+    await scanner.clear();
+    aktif=false;
+  }
+};
+
+window.scanDariFile = async function(){
+
+  // 🔴 MATIKAN KAMERA JIKA AKTIF
+  if(aktif){
+    await stopCamera();
+  }
+
+  const input = document.getElementById("fileScan");
+  if(!input.files.length){
+    alert("Pilih file gambar QR dulu");
+    return;
+  }
+
+  const file = input.files[0];
+
+  // Buat scanner jika belum ada
+  if(!scanner){
+    scanner = new Html5Qrcode("reader");
+  }
+
+  try{
+    const text = await scanner.scanFile(file, true);
+
+    // Tampilkan hasil scan
+    hasilScan.innerText = text;
+
+    // 🔑 AMBIL NAMA SETELAH TITIK DUA (SAMA DENGAN KAMERA)
+    let namaScan = text;
+    if(text.includes(":")){
+      namaScan = text.split(":").pop();
+    }
+
+    namaScan = namaScan
+      .replace(/\s+/g," ")
+      .trim()
+      .toUpperCase();
+
+    if(!siswaMap[namaScan]){
+      msgErr.innerText = "❌ QR tidak dikenali";
+      msgErr.style.display="block";
+      msgOk.style.display="none";
+      beepErr();
+      return;
+    }
+
+    overlay.classList.add("active");
+    await kirimAbsen(siswaMap[namaScan]);
+    overlay.classList.remove("active");
+
+  }catch(e){
+    msgErr.innerText = "❌ Gagal membaca QR dari file";
+    msgErr.style.display="block";
+    msgOk.style.display="none";
+    beepErr();
+  }
+};
+
+/* ================= ABSEN PAGI ================= */
+
+function hitungNilai(urutan){
+  if(urutan <= 3) return 10;
+  if(urutan <= 6) return 9;
+  if(urutan <= 9) return 8;
+  if(urutan <= 12) return 7;
+  return 6;
+}
+
+
+
+let kelasAktif = null;
+let rombelAktif = null;
+
+async function kirimAbsen(s){
+  if(proses) return;
+  proses=true;
+
+  const jam = new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"});
+  const ref = doc(db,"absen_pagi",`${lembagaId}_${s.id}_${tanggal}`);
+
+  try{
+    const cek = await getDoc(ref);
+    if(cek.exists()){
+      msgErr.innerText = `❌ ${s.nama} sudah absen pagi`;
+      msgErr.style.display="block";
+      msgOk.style.display="none";
+      beepErr();
+      return;
+    }
+
+// Hitung urutan hadir di kelas & rombel hari ini
+const absenHariIni = await getDocs(query(
+  collection(db,"absen_pagi"),
+  where("kelasId","==",s.kelasId),
+  where("rombelId","==",s.rombelId),
+  where("tanggal","==",tanggal)
+));
+
+const urutan = absenHariIni.size + 1;
+const nilai = hitungNilai(urutan);
+
+
+    await setDoc(ref,{
+  lembagaId,
+  siswaId: s.id,
+  namaSiswa: s.nama,
+  kelasId: s.kelasId,
+  rombelId: s.rombelId,
+  tanggal,
+  jam,
+  urutan,
+  nilai,
+  dibuat: serverTimestamp()
+});
+
+
+    msgOk.innerText = `✅ ${s.nama} berhasil absen pagi`;
+    msgOk.style.display="block";
+    msgErr.style.display="none";
+    beepOk();
+
+  }catch(e){
+    msgErr.innerText = "❌ Gagal menyimpan data";
+    msgErr.style.display="block";
+    msgOk.style.display="none";
+    beepErr();
+  }finally{
+    proses=false;
+  }
+kelasAktif = s.kelasId;
+rombelAktif = s.rombelId;
+
+loadTabelRombel();
+
+}
+async function loadTabelRombel(){
+  if(!kelasAktif || !rombelAktif) return;
+
+  // 1. Ambil semua siswa di rombel
+  const siswaSnap = await getDocs(query(
+    collection(db,"siswa"),
+    where("kelasId","==",kelasAktif),
+    where("rombelId","==",rombelAktif)
+  ));
+
+  const siswaList = [];
+  siswaSnap.forEach(d=>{
+    siswaList.push({
+      id: d.id,
+      nama: d.data().nama
+    });
+  });
+
+  // 2. Ambil absen pagi hari ini di rombel tsb
+  const absenSnap = await getDocs(query(
+    collection(db,"absen_pagi"),
+    where("kelasId","==",kelasAktif),
+    where("rombelId","==",rombelAktif),
+    where("tanggal","==",tanggal)
+  ));
+
+const mapAbsen = {};
+absenSnap.forEach(d=>{
+  mapAbsen[d.data().siswaId] = {
+    nilai: d.data().nilai,
+    urutan: d.data().urutan
+  };
+});
+
+
+const namaKelas = kelasMap[kelasAktif] || "";
+const namaRombel = rombelMap[rombelAktif] || "";
+
+document.getElementById("judulRombel").innerText =
+  `Daftar Absen Rombel ${namaKelas}${namaRombel ? " " + namaRombel : ""}`;
+
+
+
+// 3. Render tabel (DIURUTKAN NILAI & URUTAN)
+
+// Gabungkan data siswa + nilai + urutan
+const dataTabel = siswaList.map(s => ({
+  id: s.id,
+  nama: s.nama,
+  nilai: mapAbsen[s.id]?.nilai ?? 0,
+  urutan: mapAbsen[s.id]?.urutan ?? 999
+}));
+
+// 🔑 SORTING:
+// 1. Nilai terbesar dulu
+// 2. Jika nilai sama, urutan scan lebih dulu
+dataTabel.sort((a, b) => {
+  if (b.nilai !== a.nilai) return b.nilai - a.nilai;
+  return a.urutan - b.urutan;
+});
+
+// Render ke tabel
+const tbody = document.querySelector("#tabelAbsen tbody");
+tbody.innerHTML = "";
+
+dataTabel.forEach((s, i) => {
+  tbody.innerHTML += `
+    <tr style="background:${s.nilai > 0 ? '#e8f5e9' : '#ffebee'}">
+      <td>${i + 1}</td>
+         <td>${s.nama}</td>
+      <td><b>${s.nilai}</b></td>
+    </tr>
+  `;
+});
+}
+
+</script>
+
+</body>
+</html>
