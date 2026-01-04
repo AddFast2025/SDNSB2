@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Rekap Nilai Absen Pagi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family:Arial;
+  background:#f4f6f8;
+  padding:20px;
+}
+.card{
+  max-width:900px;
+  margin:auto;
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+}
+h2{
+  text-align:center;
+  margin-bottom:20px;
+}
+label{
+  font-weight:bold;
+  display:block;
+  margin-top:10px;
+}
+select,input,button{
+  width:100%;
+  padding:8px;
+  margin-top:5px;
+}
+button{
+  background:#2e7d32;
+  color:#fff;
+  border:none;
+  margin-top:15px;
+  cursor:pointer;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:20px;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:8px;
+}
+th{
+  background:#1976d2;
+  color:white;
+}
+td:nth-child(1),
+td:nth-child(3){
+  text-align:center;
+  width:70px;
+}
+.loading{
+  margin-top:15px;
+  color:#555;
+  text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2>📊 Rekap Nilai Absen Pagi</h2>
+
+<label>Bulan</label>
+<input type="month" id="bulan">
+
+<label>Lembaga</label>
+<select id="lembaga"></select>
+
+<label>Kelas</label>
+<select id="kelas"></select>
+
+<label>Rombel</label>
+<select id="rombel">
+  <option value="">-- Pilih Rombel --</option>
+</select>
+
+<button id="btn">Tampilkan Rekap</button>
+
+<div id="loading" class="loading"></div>
+
+<table id="tabel" style="display:none">
+<thead>
+<tr>
+  <th>No</th>
+  <th>Nama</th>
+  <th>Nilai</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, getDocs,
+  query, where, Timestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ELEMENT */
+const bulanEl = document.getElementById("bulan");
+const lembagaEl = document.getElementById("lembaga");
+const kelasEl = document.getElementById("kelas");
+const rombelEl = document.getElementById("rombel");
+const tbody = document.getElementById("tbody");
+const tabel = document.getElementById("tabel");
+const loading = document.getElementById("loading");
+
+/* DEFAULT BULAN SEKARANG */
+const now = new Date();
+bulanEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+
+/* LOAD LEMBAGA */
+async function loadLembaga(){
+  lembagaEl.innerHTML = `<option value="">-- Pilih Lembaga --</option>`;
+  const snap = await getDocs(collection(db,"lembaga"));
+  snap.forEach(d=>{
+    lembagaEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+}
+loadLembaga();
+
+/* LEMBAGA → KELAS */
+lembagaEl.addEventListener("change", async ()=>{
+  kelasEl.innerHTML = `<option value="">-- Pilih Kelas --</option>`;
+  rombelEl.innerHTML = `<option value="">A</option>`;
+  if(!lembagaEl.value) return;
+
+  const q = query(
+    collection(db,"kelas"),
+    where("lembagaId","==",lembagaEl.value)
+  );
+  const snap = await getDocs(q);
+  snap.forEach(d=>{
+    kelasEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+});
+
+/* KELAS → ROMBEL */
+kelasEl.addEventListener("change", async ()=>{
+  rombelEl.innerHTML = `<option value="">-- Pilih Rombel --</option>`;
+  if(!kelasEl.value) return;
+
+  const q = query(
+    collection(db,"rombel"),
+    where("kelasId","==",kelasEl.value)
+  );
+  const snap = await getDocs(q);
+
+  let rombelA = "";
+
+  snap.forEach(d=>{
+    rombelEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+    if(d.data().nama === "A") rombelA = d.id;
+  });
+
+  if(rombelA) rombelEl.value = rombelA;
+});
+
+
+
+/* REKAP */
+document.getElementById("btn").onclick = async ()=>{
+  try{
+    tbody.innerHTML="";
+    tabel.style.display="none";
+
+    if(!bulanEl.value || !lembagaEl.value || !kelasEl.value || !rombelEl.value){
+      loading.textContent="Lengkapi pilihan terlebih dahulu";
+      return;
+    }
+
+    loading.textContent="Memuat data...";
+
+    const [y,m] = bulanEl.value.split("-");
+    const start = Timestamp.fromDate(new Date(y, m-1, 1));
+    const end   = Timestamp.fromDate(new Date(y, m, 0, 23,59,59));
+
+    /* 1️⃣ Ambil semua siswa */
+    const qs = query(
+      collection(db,"siswa"),
+      where("lembagaId","==",lembagaEl.value),
+      where("kelasId","==",kelasEl.value),
+      where("rombelId","==",rombelEl.value)
+    );
+    const siswaSnap = await getDocs(qs);
+
+    const map = {};
+    siswaSnap.forEach(d=>{
+      map[d.id] = { nama:d.data().nama, nilai:0 };
+    });
+
+    /* 2️⃣ Ambil absen bulanan */
+    const qa = query(
+      collection(db,"absen_pagi"),
+      where("lembagaId","==",lembagaEl.value),
+      where("kelasId","==",kelasEl.value),
+      where("rombelId","==",rombelEl.value),
+      where("dibuat",">=",start),
+      where("dibuat","<=",end)
+    );
+
+    const absenSnap = await getDocs(qa);
+
+    absenSnap.forEach(d=>{
+      const a = d.data();
+      if(map[a.siswaId]){
+        map[a.siswaId].nilai += a.nilai;
+      }
+    });
+
+    const hasil = Object.values(map).sort((a,b)=>b.nilai - a.nilai);
+
+    let no=1;
+    hasil.forEach(r=>{
+      tbody.innerHTML += `
+        <tr>
+          <td>${no++}</td>
+          <td>${r.nama}</td>
+          <td>${r.nilai}</td>
+        </tr>`;
+    });
+
+    loading.textContent="";
+    tabel.style.display="table";
+
+  }catch(err){
+    console.error(err);
+    loading.textContent = "❌ Gagal memuat data (cek console / index Firestore)";
+  }
+};
+
+
+
+
+
+</script>
+
+</body>
+</html>
