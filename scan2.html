@@ -77,6 +77,67 @@ button{
   font-size: 16px;
 }
 
+.progres-box{
+  background:#e3f2fd;
+  padding:12px;
+  border-radius:10px;
+  margin-bottom:12px;
+}
+
+/* GRID UTAMA */
+.progres-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr); /* desktop */
+  gap:8px;
+  margin-top:8px;
+  font-size:14px;
+}
+
+/* KARTU PER KELAS */
+.progres-item{
+  background:white;
+  padding:8px 8px 8px 28px;
+  border-radius:8px;
+  text-align:center;
+  font-weight:bold;
+  border:1px solid #bbdefb;
+  position:relative;
+}
+
+.progres-btn{
+  width:18px;
+  height:18px;
+  border-radius:4px;
+  background:#d32f2f;
+  border:none;
+  cursor:pointer;
+  position:absolute;
+  left:8px;
+  top:8px;
+}
+.progres-btn:hover{
+  background:#b71c1c;
+}
+
+
+
+
+
+
+
+/* RESPONSIVE */
+@media (max-width:768px){
+  .progres-grid{
+    grid-template-columns:repeat(2,1fr); /* HP landscape */
+  }
+}
+@media (max-width:480px){
+  .progres-grid{
+    grid-template-columns:1fr; /* HP portrait */
+  }
+}
+
+
 
 
 
@@ -113,7 +174,15 @@ button{
 
 <hr>
 
+<div class="progres-box">
+  <b>📊 Progres Absen Hari Ini</b>
+  <div id="progresGrid" class="progres-grid">
+    Memuat progres absen...
+  </div>
+</div>
+
 <h3 id="judulRombel">Daftar Absen Kelas</h3>
+
 
 <table id="tabelAbsen" border="1" width="100%" cellspacing="0">
   <thead>
@@ -194,6 +263,84 @@ async function loadMaster(){
   });
 }
 loadMaster();
+setTimeout(loadProgresAbsen, 800);
+
+
+async function loadProgresAbsen(){
+  const siswaSnap = await getDocs(query(
+    collection(db,"siswa"),
+    where("lembagaId","==",lembagaId)
+  ));
+
+  // hitung total siswa per kelas+rombel
+  const totalMap = {};
+  siswaSnap.forEach(d=>{
+    const s = d.data();
+    const key = s.kelasId + "_" + s.rombelId;
+    totalMap[key] = (totalMap[key] || 0) + 1;
+  });
+
+  // hitung yang sudah absen hari ini
+  const absenSnap = await getDocs(query(
+    collection(db,"absen_pagi"),
+    where("lembagaId","==",lembagaId),
+    where("tanggal","==",tanggal)
+  ));
+
+  const hadirMap = {};
+  absenSnap.forEach(d=>{
+    const a = d.data();
+    const key = a.kelasId + "_" + a.rombelId;
+    hadirMap[key] = (hadirMap[key] || 0) + 1;
+  });
+
+  // render
+  
+
+const list = [];
+
+
+// kumpulkan data
+for(const key in totalMap){
+  const [kelasId, rombelId] = key.split("_");
+  const namaKelas = kelasMap[kelasId] || "";
+  const namaRombel = rombelMap[rombelId] || "";
+  const hadir = hadirMap[key] || 0;
+  const total = totalMap[key];
+
+  const noKelas = parseInt(namaKelas);
+
+  list.push({
+  noKelas,
+  html: `
+    <div class="progres-item">
+      <button class="progres-btn"
+        onclick="bukaKelasDariProgres('${kelasId}','${rombelId}')">
+      </button>
+      Kls ${namaKelas}${namaRombel}<br>
+      ${hadir} / ${total}
+    </div>
+  `
+});
+
+}
+
+// urutkan kelas 1 → 6
+list.sort((a,b)=>a.noKelas - b.noKelas);
+
+// render ke grid
+const grid = document.getElementById("progresGrid");
+grid.innerHTML = list.map(i=>i.html).join("");
+
+}
+
+window.bukaKelasDariProgres = function(kelasId, rombelId){
+  kelasAktif = kelasId;
+  rombelAktif = rombelId;
+  loadTabelRombel();
+};
+
+
 
 
 /* ================= LOAD SISWA ================= */
@@ -221,6 +368,7 @@ async function loadSiswa(){
   });
 }
 loadSiswa();
+
 
 
 
@@ -330,6 +478,7 @@ window.scanDariFile = async function(){
     msgErr.style.display="block";
     msgOk.style.display="none";
     beepErr();
+  return;
   }
 };
 
@@ -362,7 +511,8 @@ async function kirimAbsen(s){
       msgErr.style.display="block";
       msgOk.style.display="none";
       beepErr();
-      return;
+     
+
     }
 
 // Hitung urutan hadir di kelas & rombel hari ini
@@ -389,6 +539,9 @@ const nilai = hitungNilai(urutan);
   nilai,
   dibuat: serverTimestamp()
 });
+
+// 🔥 INI YANG HILANG
+await loadProgresAbsen();
 
 
     msgOk.innerText = `✅ ${s.nama} berhasil absen pagi`;
