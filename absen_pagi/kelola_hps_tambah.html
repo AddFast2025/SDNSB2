@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Kelola Absen Pagi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{font-family:Arial;background:#f4f6f8;padding:20px}
+.card{max-width:900px;margin:auto;background:#fff;padding:20px;border-radius:12px}
+h2{text-align:center;margin-top:0}
+label{font-weight:bold;display:block;margin-top:10px}
+select,input{width:100%;padding:8px;margin-top:4px}
+button{padding:10px 16px;border:none;border-radius:6px;cursor:pointer;margin-right:5px}
+.btn-add{background:#2e7d32;color:#fff}
+.btn-del{background:#c62828;color:#fff}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{border:1px solid #ccc;padding:6px;text-align:center}
+th{background:#1976d2;color:#fff}
+
+#tbody td:nth-child(2),
+table thead th:nth-child(2){
+  text-align:left;
+}
+
+
+</style>
+</head>
+
+<body>
+<div class="card">
+<h2>Kelola Absen Pagi</h2>
+
+<label>Lembaga</label>
+<select id="lembaga">
+  <option value="">Pilih Lembaga</option>
+</select>
+
+<label>Kelas</label>
+<select id="kelas">
+  <option value="">Pilih Kelas</option>
+</select>
+
+<label>Rombel</label>
+<select id="rombel">
+  <option value="">Pilih Rombel</option>
+</select>
+
+<label>Tanggal</label>
+<input type="date" id="tanggal">
+
+<br><br>
+<button class="btn-add" onclick="tambahAbsen()">➕ Tambahkan</button>
+<button class="btn-del" onclick="hapusAbsen()">🗑 Delete</button>
+
+<span style="margin-left:15px;font-weight:bold">Nilai</span>
+<select id="nilaiInput" style="width:80px;display:inline-block">
+  <option value="5">5</option>
+  <option value="6" selected>6</option>
+  <option value="7">7</option>
+  <option value="8">8</option>
+  <option value="9">9</option>
+  <option value="10">10</option>
+</select>
+
+<table>
+<thead>
+<tr>
+  <th>No</th>
+  <th>Nama Siswa</th>
+  <th>Nilai</th>
+  <th>Pilih</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<script type="module">
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, query, where,
+  doc, getDoc, setDoc, deleteDoc, serverTimestamp
+} from
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* ================= FIREBASE ================= */
+const firebaseConfig = {
+  apiKey:"AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain:"datasiswa-c10f4.firebaseapp.com",
+  projectId:"datasiswa-c10f4"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ================= ELEMENT ================= */
+const lembagaEl = document.getElementById("lembaga");
+const kelasEl   = document.getElementById("kelas");
+const rombelEl  = document.getElementById("rombel");
+const tanggalEl = document.getElementById("tanggal");
+const tbody     = document.getElementById("tbody");
+const nilaiInput = document.getElementById("nilaiInput");
+
+
+tanggalEl.value = new Date().toISOString().slice(0,10);
+let siswaList = [];
+
+/* ================= LOAD LEMBAGA ================= */
+async function loadLembaga(){
+  const snap = await getDocs(collection(db,"lembaga"));
+  snap.forEach(d=>{
+    lembagaEl.innerHTML +=
+      `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+}
+
+/* ================= LOAD KELAS BY LEMBAGA ================= */
+async function loadKelasByLembaga(){
+  kelasEl.innerHTML  = "<option value=''>Pilih Kelas</option>";
+  rombelEl.innerHTML = "<option value=''>Pilih Rombel</option>";
+  tbody.innerHTML = "";
+
+  if(!lembagaEl.value) return;
+
+  const snap = await getDocs(query(
+    collection(db,"siswa"),
+    where("lembagaId","==",lembagaEl.value)
+  ));
+
+  const setKelas = new Set();
+  snap.forEach(d=>setKelas.add(d.data().kelasId));
+
+  for(const id of setKelas){
+    const k = await getDoc(doc(db,"kelas",id));
+    if(k.exists()){
+      kelasEl.innerHTML +=
+        `<option value="${id}">${k.data().nama}</option>`;
+    }
+  }
+}
+
+/* ================= LOAD ROMBEL BY KELAS ================= */
+async function loadRombelByKelas(){
+  rombelEl.innerHTML = "<option value=''>Pilih Rombel</option>";
+  tbody.innerHTML = "";
+
+  if(!kelasEl.value) return;
+
+  const snap = await getDocs(query(
+    collection(db,"siswa"),
+    where("lembagaId","==",lembagaEl.value),
+    where("kelasId","==",kelasEl.value)
+  ));
+
+  const setRombel = new Set();
+  snap.forEach(d=>setRombel.add(d.data().rombelId));
+
+  for(const id of setRombel){
+    const r = await getDoc(doc(db,"rombel",id));
+    if(r.exists()){
+      rombelEl.innerHTML +=
+        `<option value="${id}">${r.data().nama}</option>`;
+    }
+  }
+}
+
+/* ================= LOAD SISWA ================= */
+
+
+async function loadSiswa(){
+  tbody.innerHTML="";
+  siswaList=[];
+
+  if(!rombelEl.value) return;
+
+  // 🔹 ambil absen pagi (nilai)
+  const absenSnap = await getDocs(query(
+    collection(db,"absen_pagi"),
+    where("lembagaId","==",lembagaEl.value),
+    where("kelasId","==",kelasEl.value),
+    where("rombelId","==",rombelEl.value),
+    where("tanggal","==",tanggalEl.value)
+  ));
+
+  const mapNilai = {};
+  absenSnap.forEach(d=>{
+    mapNilai[d.data().siswaId] = d.data().nilai;
+  });
+
+  // 🔹 ambil siswa
+  const snap = await getDocs(query(
+    collection(db,"siswa"),
+    where("lembagaId","==",lembagaEl.value),
+    where("kelasId","==",kelasEl.value),
+    where("rombelId","==",rombelEl.value)
+  ));
+
+  const data = [];
+
+  snap.forEach(d=>{
+    data.push({
+      id: d.id,
+      nama: d.data().nama,
+      nilai: mapNilai[d.id] ?? 0
+    });
+  });
+
+  // 🔑 SORTING
+  data.sort((a,b)=>{
+    if(b.nilai !== a.nilai) return b.nilai - a.nilai; // nilai desc
+    return a.nama.localeCompare(b.nama);             // nama A–Z
+  });
+
+  // 🔹 render tabel
+  let no = 1;
+  data.forEach(s=>{
+    siswaList.push(s);
+
+    tbody.innerHTML += `
+      <tr style="background:${s.nilai>0 ? '#e8f5e9' : '#ffebee'}">
+        <td>${no++}</td>
+        <td>${s.nama}</td>
+        <td><b>${s.nilai}</b></td>
+        <td>
+          <input type="checkbox" value="${s.id}" }>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ================= TAMBAH ABSEN ================= */
+window.tambahAbsen = async function(){
+
+const checked = document.querySelectorAll("input[type=checkbox]:checked");
+if(checked.length === 0){
+  alert("Silakan pilih siswa terlebih dahulu");
+  return;
+}
+
+  const tanggal = tanggalEl.value;
+  const jam = "08.00";
+
+  for(const cb of document.querySelectorAll("input[type=checkbox]:checked")){
+    const siswa = siswaList.find(s=>s.id===cb.value);
+    const ref = doc(db,"absen_pagi",
+      `${lembagaEl.value}_${cb.value}_${tanggal}`);
+
+    const cek = await getDoc(ref);
+    if(cek.exists()) continue;
+
+   await setDoc(ref,{
+  lembagaId:lembagaEl.value,
+  siswaId:cb.value,
+  namaSiswa:siswa.nama,
+  kelasId:kelasEl.value,
+  rombelId:rombelEl.value,
+  tanggal,
+  jam,
+  nilai: Number(nilaiInput.value), // ⬅ dari dropdown
+  urutan:999,
+  dibuat:serverTimestamp()
+});
+
+  }
+  alert("Absen berhasil ditambahkan");
+await loadSiswa();   // 🔄 refresh tabel
+
+};
+
+/* ================= HAPUS ABSEN ================= */
+window.hapusAbsen = async function(){
+
+
+const checked = document.querySelectorAll("input[type=checkbox]:checked");
+if(checked.length === 0){
+  alert("Silakan pilih siswa terlebih dahulu");
+  return;
+}
+
+
+  const tanggal = tanggalEl.value;
+
+  for(const cb of document.querySelectorAll("input[type=checkbox]:checked")){
+    const ref = doc(db,"absen_pagi",
+      `${lembagaEl.value}_${cb.value}_${tanggal}`);
+    await deleteDoc(ref);
+  }
+  alert("Absen berhasil dihapus");
+await loadSiswa();   // 🔄 refresh tabel
+
+};
+
+/* ================= EVENT ================= */
+lembagaEl.onchange = loadKelasByLembaga;
+kelasEl.onchange   = loadRombelByKelas;
+rombelEl.onchange  = loadSiswa;
+
+/* ================= INIT ================= */
+loadLembaga();
+</script>
+</body>
+</html>
