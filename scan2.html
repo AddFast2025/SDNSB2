@@ -53,7 +53,7 @@ button{
 }
 
 /* Kolom Nama */
-#tabelAbsen th:nth-child(2),
+#tabelAbsen th:nth-child(2){
  text-align: center;
 }
 
@@ -158,7 +158,8 @@ button{
 <div style="margin:10px 0;text-align:center">
   <button onclick="setKelompok(1)" id="btnK1">A : < 07.30</button>
   <button onclick="setKelompok(2)" id="btnK2">B : 07.30 sd 07.45</button>
-  <button onclick="setKelompok(3)" id="btnK3">C : 07.45 sd 07.00</button>
+  <button onclick="setKelompok(3)" id="btnK3">C : 07.46 sd 07.00</button>
+ <button onclick="setKelompok(4)" id="btnK4">D : > 07.00</button>
 </div>
 
 
@@ -240,6 +241,7 @@ window.setKelompok = function(k){
   document.getElementById("btnK1").classList.remove("kelompok-active");
   document.getElementById("btnK2").classList.remove("kelompok-active");
   document.getElementById("btnK3").classList.remove("kelompok-active");
+  document.getElementById("btnK4").classList.remove("kelompok-active");
 
   // aktifkan tombol yang dipilih
   document.getElementById("btnK"+k).classList.add("kelompok-active");
@@ -557,6 +559,7 @@ let nilai = 0;
 if(kelompokAktif === 1) nilai = 10;
 if(kelompokAktif === 2) nilai = 8;
 if(kelompokAktif === 3) nilai = 5;
+if(kelompokAktif === 4) nilai = -2;
 
 const urutan = 0; // optional, kalau tidak dipakai
 
